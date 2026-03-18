@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=development ts-node-dev --respawn --transpile-only src/server.ts",
     "build": "tsc",
-    "start": "cross-env NODE_ENV=production node dist/server.js",
+    "start": "cross-env NODE_ENV=production npm run db:migrate && node dist/server.js",
     "start:dev": "npm run dev",
     "start:prod": "npm run build && npm run start",
     "db:create": "sequelize-cli db:create",
