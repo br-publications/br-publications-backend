@@ -5,7 +5,8 @@
     plan: standard
     # Build: Install deps and compile TypeScript
     buildCommand: npm ci --legacy-peer-deps && npm run build
-    startCommand: npm run db:migrate && npm start
+    # Start script now runs migrations before starting server
+    startCommand: npm start
     envVars:
       # Set to production only after build is complete
       - key: NODE_ENV
