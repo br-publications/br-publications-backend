@@ -3,9 +3,9 @@
     name: br-publications-backend
     runtime: node
     plan: standard
-    # Install dependencies (including devDependencies for TypeScript types) and build
+    # Build: Install deps and compile TypeScript
     buildCommand: npm ci --legacy-peer-deps && npm run build
-    startCommand: npm start
+    startCommand: npm run db:migrate && npm start
     envVars:
       # Set to production only after build is complete
       - key: NODE_ENV
