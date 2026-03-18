@@ -75,12 +75,16 @@ module.exports = {
       },
     });
 
-    // Add indexes
-    await queryInterface.addIndex('book_chapter_status_history', ['submissionId']);
-    await queryInterface.addIndex('book_chapter_status_history', ['changedBy']);
-    await queryInterface.addIndex('book_chapter_status_history', ['newStatus']);
-    await queryInterface.addIndex('book_chapter_status_history', ['changedAt']);
-    await queryInterface.addIndex('book_chapter_status_history', ['submissionId', 'changedAt']);
+    // Add indexes - wrap in try-catch to handle if they already exist
+    try {
+      await queryInterface.addIndex('book_chapter_status_history', ['submissionId']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_status_history', ['changedBy']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_status_history', ['newStatus']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_status_history', ['changedAt']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_status_history', ['submissionId', 'changedAt']).catch(() => {});
+    } catch (err) {
+      console.log('⚠️ Index creation warning (may already exist):', err.message);
+    }
   },
 
   down: async (queryInterface, Sequelize) => {

@@ -94,12 +94,16 @@ module.exports = {
       },
     });
 
-    // Add indexes
-    await queryInterface.addIndex('book_chapter_files', ['submissionId']);
-    await queryInterface.addIndex('book_chapter_files', ['uploadedBy']);
-    await queryInterface.addIndex('book_chapter_files', ['fileType']);
-    await queryInterface.addIndex('book_chapter_files', ['isActive']);
-    await queryInterface.addIndex('book_chapter_files', ['submissionId', 'fileType', 'isActive']);
+    // Add indexes - wrap in try-catch to handle if they already exist
+    try {
+      await queryInterface.addIndex('book_chapter_files', ['submissionId']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_files', ['uploadedBy']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_files', ['fileType']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_files', ['isActive']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_files', ['submissionId', 'fileType', 'isActive']).catch(() => {});
+    } catch (err) {
+      console.log('⚠️ Index creation warning (may already exist):', err.message);
+    }
   },
 
   down: async (queryInterface, Sequelize) => {

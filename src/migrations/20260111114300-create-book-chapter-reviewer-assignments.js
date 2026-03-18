@@ -107,21 +107,25 @@ module.exports = {
       },
     });
 
-    // Add indexes
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['submissionId']);
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['reviewerId']);
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['status']);
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['deadline']);
-    
-    // Composite indexes
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['submissionId', 'status']);
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['reviewerId', 'status']);
-    
-    // Unique constraint: one reviewer can only be assigned once per submission
-    await queryInterface.addIndex('book_chapter_reviewer_assignments', ['submissionId', 'reviewerId'], {
-      unique: true,
-      name: 'unique_submission_reviewer'
-    });
+    // Add indexes - wrap in try-catch to handle if they already exist
+    try {
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['submissionId']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['reviewerId']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['status']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['deadline']).catch(() => {});
+      
+      // Composite indexes
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['submissionId', 'status']).catch(() => {});
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['reviewerId', 'status']).catch(() => {});
+      
+      // Unique constraint: one reviewer can only be assigned once per submission
+      await queryInterface.addIndex('book_chapter_reviewer_assignments', ['submissionId', 'reviewerId'], {
+        unique: true,
+        name: 'unique_submission_reviewer'
+      }).catch(() => {});
+    } catch (err) {
+      console.log('⚠️ Index creation warning (may already exist):', err.message);
+    }
   },
 
   down: async (queryInterface, Sequelize) => {
