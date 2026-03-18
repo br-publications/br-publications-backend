@@ -1,0 +1,7 @@
+﻿services:
+  - type: web
+    name: br-publications-backend
+    env: node
+    plan: standard
+    buildCommand: npm i --legacy-peer-deps && npm run build
+    startCommand: npm start
