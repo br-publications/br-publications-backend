@@ -1,7 +1,15 @@
 ﻿services:
   - type: web
     name: br-publications-backend
-    env: node
+    runtime: node
     plan: standard
-    buildCommand: npm i --legacy-peer-deps && npm run build
+    # Install dependencies (including devDependencies for TypeScript types) and build
+    buildCommand: npm ci --legacy-peer-deps && npm run build
     startCommand: npm start
+    envVars:
+      # Set to production only after build is complete
+      - key: NODE_ENV
+        value: production
+      # Ensure npm doesn't prune devDependencies during install
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
