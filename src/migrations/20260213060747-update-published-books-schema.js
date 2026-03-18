@@ -33,10 +33,10 @@ module.exports = {
         { transaction }
       );
 
-      // Ensure submissionId is nullable (it might already be, but good to ensure for textbooks)
+      // Ensure submission_id is nullable (it might already be, but good to ensure for textbooks)
       await queryInterface.changeColumn(
         'published_books',
-        'submissionId',
+        'submission_id',
         {
           type: Sequelize.INTEGER,
           allowNull: true,
