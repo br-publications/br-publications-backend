@@ -271,11 +271,10 @@ async function updateTemplates() {
             content: { type: DataTypes.TEXT, allowNull: false },
             variables: { type: DataTypes.JSON, allowNull: true },
             description: { type: DataTypes.STRING, allowNull: true },
-            isActive: { type: DataTypes.BOOLEAN, defaultValue: true, field: 'is_active' }
+            isActive: { type: DataTypes.BOOLEAN, defaultValue: true }
         }, {
             sequelize,
             tableName: 'communication_templates',
-            underscored: true,
             timestamps: true
         });
 
