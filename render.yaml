@@ -1,7 +1,7 @@
 ﻿services:
   - type: web
     name: br-publications-backend
-    env: node
+    runtime: node
     plan: standard
     # Install dependencies (including devDependencies for TypeScript types) and build
     buildCommand: npm ci --legacy-peer-deps && npm run build
