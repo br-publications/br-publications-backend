@@ -86,7 +86,6 @@ class CommunicationTemplate extends Model<CommunicationTemplateAttributes> imple
                 sequelize,
                 tableName: 'communication_templates',
                 timestamps: true,
-                underscored: true,
             }
         );
 

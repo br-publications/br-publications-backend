@@ -23,9 +23,9 @@ module.exports = {
 </div>`,
                 variables: JSON.stringify(['name', 'bookTitle', 'publishDate', 'isbn', 'doi', 'frontendUrl']),
                 description: 'Sent to Author when their textbook is published',
-                is_active: true,
-                created_at: new Date(),
-                updated_at: new Date()
+                isActive: true,
+                createdAt: new Date(),
+                updatedAt: new Date()
             }
         ]);
     },
