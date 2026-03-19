@@ -57,9 +57,9 @@ export const submitRecruitment = async (req: AuthRequest, res: Response) => {
             applicationId: applicationId
         };
 
-        // If an image was uploaded, store its relative URL
+        // If an image was uploaded, store its Base64 data
         if (req.file) {
-            submissionData.personalImage = `/uploads/recruitment/${req.file.filename}`;
+            submissionData.personalImage = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
         }
 
         const submission = await RecruitmentSubmission.create(submissionData);
@@ -263,6 +263,7 @@ export const updateSubmissionStatus = async (req: AuthRequest, res: Response) =>
             applicant.state = submission.state || applicant.state;
             applicant.country = submission.country || applicant.country;
             applicant.qualification = submission.highestQualification || applicant.qualification;
+            applicant.scopusLink = submission.scopusId || applicant.scopusLink;
             applicant.bio = submission.biography || applicant.bio;
             
             if (submission.personalImage) {
