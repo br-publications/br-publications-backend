@@ -4,34 +4,40 @@ module.exports = {
   up: async (queryInterface, Sequelize) => {
     const transaction = await queryInterface.sequelize.transaction();
     try {
-      // Add textBookSubmissionId column
-      await queryInterface.addColumn(
-        'published_books',
-        'textBookSubmissionId',
-        {
-          type: Sequelize.INTEGER,
-          allowNull: true,
-          references: {
-            model: 'text_book_submissions', // Ensure this table name is correct
-            key: 'id',
-          },
-          onUpdate: 'CASCADE',
-          onDelete: 'SET NULL',
-        },
-        { transaction }
-      );
+      const table = await queryInterface.describeTable('published_books');
 
-      // Add bookType column
-      await queryInterface.addColumn(
-        'published_books',
-        'bookType',
-        {
-          type: Sequelize.ENUM('CHAPTER', 'TEXTBOOK'),
-          allowNull: false,
-          defaultValue: 'CHAPTER', // Assume existing records are chapters
-        },
-        { transaction }
-      );
+      // Add textBookSubmissionId column (idempotent)
+      if (!table.textBookSubmissionId) {
+        await queryInterface.addColumn(
+          'published_books',
+          'textBookSubmissionId',
+          {
+            type: Sequelize.INTEGER,
+            allowNull: true,
+            references: {
+              model: 'text_book_submissions', // Ensure this table name is correct
+              key: 'id',
+            },
+            onUpdate: 'CASCADE',
+            onDelete: 'SET NULL',
+          },
+          { transaction }
+        );
+      }
+
+      // Add bookType column (idempotent)
+      if (!table.bookType) {
+        await queryInterface.addColumn(
+          'published_books',
+          'bookType',
+          {
+            type: Sequelize.ENUM('CHAPTER', 'TEXTBOOK'),
+            allowNull: false,
+            defaultValue: 'CHAPTER', // Assume existing records are chapters
+          },
+          { transaction }
+        );
+      }
 
       // Ensure submission_id is nullable (it might already be, but good to ensure for textbooks)
       await queryInterface.changeColumn(
@@ -56,8 +62,15 @@ module.exports = {
   down: async (queryInterface, Sequelize) => {
     const transaction = await queryInterface.sequelize.transaction();
     try {
-      await queryInterface.removeColumn('published_books', 'textBookSubmissionId', { transaction });
-      await queryInterface.removeColumn('published_books', 'bookType', { transaction });
+      const table = await queryInterface.describeTable('published_books');
+
+      if (table.textBookSubmissionId) {
+        await queryInterface.removeColumn('published_books', 'textBookSubmissionId', { transaction });
+      }
+      if (table.bookType) {
+        await queryInterface.removeColumn('published_books', 'bookType', { transaction });
+      }
+
       // Identify constraint name if needed to drop enum type? Postgres keeps enum types even if column dropped.
       await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_published_books_bookType";', { transaction });
 

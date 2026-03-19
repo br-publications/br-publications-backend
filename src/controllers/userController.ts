@@ -409,7 +409,8 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
       researchInterests,
       linkedinProfile,
       twitterProfile,
-      website
+      website,
+      scopusLink
     } = req.body;
 
     // Validate ID
@@ -517,11 +518,7 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
 
     // Profile Picture validation
     if (profilePicture !== undefined) {
-      if (profilePicture && profilePicture.length > 500) {
-        errors.profilePicture = 'Profile picture URL is too long (max 500 characters)';
-      } else {
-        user.profilePicture = profilePicture || null;
-      }
+      user.profilePicture = profilePicture || null;
     }
 
     // Update other profile fields if provided
@@ -546,6 +543,7 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
     if (linkedinProfile !== undefined) user.linkedinProfile = linkedinProfile || null;
     if (twitterProfile !== undefined) user.twitterProfile = twitterProfile || null;
     if (website !== undefined) user.website = website || null;
+    if (scopusLink !== undefined) user.scopusLink = scopusLink || null;
 
     if (Object.keys(errors).length > 0) {
       return sendError(res, 'Validation failed', 400, errors);
@@ -584,6 +582,7 @@ export const updateUserProfile = async (req: AuthRequest, res: Response) => {
       linkedinProfile: user.linkedinProfile,
       twitterProfile: user.twitterProfile,
       website: user.website,
+      scopusLink: user.scopusLink,
       lastLogin: user.lastLogin,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
@@ -1498,6 +1497,7 @@ export const getCurrentUser = async (req: AuthRequest, res: Response) => {
       linkedinProfile: user.linkedinProfile,
       twitterProfile: user.twitterProfile,
       website: user.website,
+      scopusLink: user.scopusLink,
       lastLogin: user.lastLogin,
       googleId: user.googleId,
       createdAt: user.createdAt,

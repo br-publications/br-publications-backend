@@ -17,7 +17,7 @@ export const PROJECT_APPLICATION_ADMIN_HTML = `<!DOCTYPE html>
 <!-- Header -->
 <tr>
 <td style="background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 100%);padding:36px 40px;text-align:center;">
-<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;">Development Request Portal</h1>
+<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;letter-spacing:0.5px;">Project Or Internship Request</h1>
 <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Admin Notification System</p>
 </td>
 </tr>
@@ -91,7 +91,7 @@ A new <strong>{{submissionType}}</strong> request has been submitted by
 <tr>
 <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
 <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-This is an automated notification from the <strong>Development Request System</strong>.<br/>
+This is an automated notification from the <strong>BR Publications</strong>.<br/>
 Please do not reply to this email. Review the request through the admin dashboard.
 </p>
 
@@ -130,7 +130,7 @@ export const PROJECT_SUBMISSION_RECEIVED_HTML = `<!DOCTYPE html>
 <!-- Header -->
 <tr>
 <td style="background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 100%);padding:36px 40px;text-align:center;">
-<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Development Request Portal</h1>
+<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Project Or Internship Request</h1>
 <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Application Confirmation</p>
 </td>
 </tr>
@@ -203,7 +203,7 @@ Our team will review your submission and contact you if additional information i
 <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
 
 <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-This is an automated confirmation from the <strong>Development Request Portal</strong>.<br/>
+This is an automated confirmation from the <strong>BR Publications</strong>.<br/>
 Please keep the application ID for future reference.
 </p>
 
@@ -242,7 +242,7 @@ export const PROJECT_DECISION_ACCEPTED_HTML = `<!DOCTYPE html>
 <!-- Header -->
 <tr>
 <td style="background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 100%);padding:36px 40px;text-align:center;">
-<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Development Request Portal</h1>
+<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Project Or Internship Request</h1>
 <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Application Update</p>
 </td>
 </tr>
@@ -314,7 +314,7 @@ Notes from the Team
 <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
 
 <p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">
-This is an automated notification from the <strong>Development Request Portal</strong>.
+This is an automated notification from the <strong>BR Publications</strong>.
 </p>
 
 <p style="margin-top:12px;color:#9ca3af;font-size:12px;">
@@ -348,7 +348,7 @@ export const PROJECT_DECISION_REJECTED_HTML = `<!DOCTYPE html>
 <!-- Header -->
 <tr>
 <td style="background:linear-gradient(135deg,#1e3a6e 0%,#2563eb 100%);padding:36px 40px;text-align:center;">
-<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Development Request Portal</h1>
+<h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">Project Or Internship Request</h1>
 <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Application Update</p>
 </td>
 </tr>
@@ -397,7 +397,7 @@ After reviewing your request, we regret to inform you that it could not be appro
 <!-- Footer -->
 <tr>
 <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
-<p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">This is an automated notification from the <strong>Development Request Portal</strong>.</p>
+<p style="margin:0;color:#9ca3af;font-size:12px;line-height:1.6;">This is an automated notification from the <strong>BR Publications</strong>.</p>
 <p style="margin-top:12px;color:#9ca3af;font-size:12px;">© {{currentYear}} <strong>BR Publications</strong>. All rights reserved.</p>
 </td>
 </tr>

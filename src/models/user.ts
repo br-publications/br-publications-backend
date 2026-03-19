@@ -167,6 +167,7 @@ interface UserAttributes {
   linkedinProfile: string | null;
   twitterProfile: string | null;
   website: string | null;
+  scopusLink: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -207,6 +208,7 @@ interface UserCreationAttributes extends Optional<
   | 'linkedinProfile'
   | 'twitterProfile'
   | 'website'
+  | 'scopusLink'
 > { }
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
@@ -249,6 +251,7 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
   public linkedinProfile!: string | null;
   public twitterProfile!: string | null;
   public website!: string | null;
+  public scopusLink!: string | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -550,6 +553,10 @@ class User extends Model<UserAttributes, UserCreationAttributes> implements User
           allowNull: true,
         },
         website: {
+          type: DataTypes.STRING(255),
+          allowNull: true,
+        },
+        scopusLink: {
           type: DataTypes.STRING(255),
           allowNull: true,
         },

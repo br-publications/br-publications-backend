@@ -14,6 +14,9 @@ import notificationService from '../../services/notificationService';
 import { NotificationType, NotificationCategory } from '../../models/notification';
 import { resolveDisplayBookTitle } from '../bookChapterSubmission/commonController';
 import sharp from 'sharp';
+import TemporaryUpload from '../../models/temporaryUpload';
+
+const TEMP_UPLOAD_DIR = path.resolve('uploads/temp');
 
 // ============================================================
 // Helper
@@ -27,13 +30,53 @@ const parseJsonField = (field: any) => {
     return field;
 };
 
-const TEMP_UPLOAD_DIR = path.resolve('uploads/temp');
-
-/** Ensure the temp upload directory exists */
-const ensureTempDir = () => {
-    if (!fs.existsSync(TEMP_UPLOAD_DIR)) {
-        fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
+/**
+ * Helper: Process tableContents to convert temp PDFs into permanent base64 data
+ */
+const processTempPdfsForTableContents = async (toc: any) => {
+    if (!Array.isArray(toc)) return toc;
+    
+    for (const item of toc) {
+        if (item && typeof item === 'object' && item.pdfKey) {
+            try {
+                const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
+                if (tempUpload) {
+                    item.pdfData = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`;
+                    delete item.pdfKey;
+                    // Delete temp upload after processing
+                    await tempUpload.destroy();
+                }
+            } catch (e) {
+                console.error('Error processing temp PDF for TOC:', e);
+            }
+        }
     }
+    return toc;
+};
+
+/**
+ * Helper: Process frontmatterPdfs to convert temp PDFs into permanent base64 data
+ */
+const processTempPdfsForFrontmatter = async (frontmatter: any) => {
+    if (!frontmatter || typeof frontmatter !== 'object') return frontmatter;
+    
+    for (const key of Object.keys(frontmatter)) {
+        const item = frontmatter[key];
+        if (item && typeof item === 'object' && item.pdfKey) {
+            try {
+                const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
+                if (tempUpload) {
+                    item.data = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`;
+                    delete item.pdfKey;
+                    // Delete temp upload after processing
+                    await tempUpload.destroy();
+                }
+            } catch (e) {
+                console.error('Error processing temp PDF for Frontmatter:', e);
+            }
+        }
+    }
+    return frontmatter;
 };
 
 /**
@@ -150,21 +193,36 @@ export const uploadTempPdf = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'No PDF file uploaded', 400);
         }
 
-        ensureTempDir();
+        // 1. Save to Database
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24);
 
-        // multer already saved the file to disk with a random name; we rename it for clarity
-        const ext = path.extname(file.originalname).toLowerCase() || '.pdf';
-        const fileKey = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-        const destPath = path.join(TEMP_UPLOAD_DIR, fileKey);
+        const tempUpload = await TemporaryUpload.create({
+            fileData: file.buffer,
+            mimeType: file.mimetype,
+            fileName: file.originalname,
+            expiresAt
+        });
 
-        fs.renameSync(file.path, destPath);
+        // 2. Mirror to Disk (temporary transition support)
+        try {
+            if (!fs.existsSync(TEMP_UPLOAD_DIR)) {
+                fs.mkdirSync(TEMP_UPLOAD_DIR, { recursive: true });
+            }
+            // Use the database record ID as the filename for consistency if possible
+            const diskPath = path.join(TEMP_UPLOAD_DIR, tempUpload.id);
+            fs.writeFileSync(diskPath, file.buffer);
+        } catch (diskErr) {
+            console.error('⚠️ Disk mirroring failed (DB save succeeded):', diskErr);
+            // We don't fail the request if disk write fails, as DB is primary now
+        }
 
         return sendSuccess(res, {
-            fileKey,
+            fileKey: tempUpload.id,
             originalName: file.originalname,
             mimeType: file.mimetype,
             size: file.size,
-        }, 'File uploaded successfully');
+        }, 'File uploaded successfully (Saved to DB and Disk)');
     } catch (err: any) {
         console.error('❌ uploadTempPdf error:', err);
         return sendError(res, 'Failed to upload PDF', 500);
@@ -301,7 +359,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             doi: doi || null,
             synopsis: parseJsonField(synopsis),
             scope: parseJsonField(scope),
-            tableContents: parseJsonField(tableContents),
+            tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)),
             authorBiographies: parseJsonField(authorBiographies),
             archives: parseJsonField(archives),
             pricing: parseJsonField(pricing),
@@ -309,7 +367,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             flipkartLink: flipkartLink || null,
             amazonLink: amazonLink || null,
             keywords: keywords || submission.keywords || [],
-            frontmatterPdfs: parseJsonField(frontmatterPdfs),
+            frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs)),
             isHidden: false,
             isFeatured: false,
         };
@@ -457,7 +515,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             doi: doi || null,
             synopsis: parseJsonField(synopsis),
             scope: parseJsonField(scope),
-            tableContents: parseJsonField(tableContents),
+            tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)),
             authorBiographies: parseJsonField(authorBiographies),
             archives: parseJsonField(archives),
             pricing: parseJsonField(pricing),
@@ -465,7 +523,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             flipkartLink: flipkartLink || null,
             amazonLink: amazonLink || null,
             keywords: keywords || [],
-            frontmatterPdfs: parseJsonField(frontmatterPdfs),
+            frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs)),
             isHidden: false,
             isFeatured: false,
         };
@@ -722,11 +780,18 @@ export const getChapterPdf = async (req: Request, res: Response) => {
         let filename = tocEntry.pdfName || `chapter-${chapterIndex + 1}.pdf`;
 
         if (tocEntry.pdfKey) {
-            const filePath = path.join(TEMP_UPLOAD_DIR, tocEntry.pdfKey);
-            if (!fs.existsSync(filePath)) {
-                return sendError(res, 'Chapter PDF file not found on disk', 404);
+            const tempUpload = await TemporaryUpload.findByPk(tocEntry.pdfKey);
+            if (tempUpload) {
+                buffer = tempUpload.fileData;
+            } else {
+                // Fallback to disk storage (for legacy records)
+                const filePath = path.join(TEMP_UPLOAD_DIR, tocEntry.pdfKey);
+                if (fs.existsSync(filePath)) {
+                    buffer = fs.readFileSync(filePath);
+                } else {
+                    return sendError(res, 'Chapter PDF file not found (it may have expired or was already processed)', 404);
+                }
             }
-            buffer = fs.readFileSync(filePath);
         } else if (tocEntry.pdfData) {
             const base64Data = (tocEntry.pdfData as string).replace(/^data:application\/pdf;base64,/, '');
             buffer = Buffer.from(base64Data, 'base64');
@@ -788,10 +853,10 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(pricing && { pricing: parseJsonField(pricing) }),
             ...(synopsis && { synopsis: parseJsonField(synopsis) }),
             ...(scope && { scope: parseJsonField(scope) }),
-            ...(tableContents && { tableContents: parseJsonField(tableContents) }),
+            ...(tableContents && { tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)) }),
             ...(authorBiographies && { authorBiographies: parseJsonField(authorBiographies) }),
             ...(archives && { archives: parseJsonField(archives) }),
-            ...(frontmatterPdfs && { frontmatterPdfs: parseJsonField(frontmatterPdfs) }),
+            ...(frontmatterPdfs && { frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs)) }),
             ...(mainAuthor && { mainAuthor: parseJsonField(mainAuthor) }),
             ...(coAuthorsData && { coAuthorsData: parseJsonField(coAuthorsData) }),
             ...(coverImage !== undefined && { coverImage }),
@@ -885,11 +950,18 @@ export const getExtraPdf = async (req: Request, res: Response) => {
         let filename = pdfEntry.name || `${type}.pdf`;
 
         if (pdfEntry.pdfKey) {
-            const filePath = path.join(TEMP_UPLOAD_DIR, pdfEntry.pdfKey);
-            if (!fs.existsSync(filePath)) {
-                return sendError(res, `Frontmatter PDF file for "${type}" not found on disk`, 404);
+            const tempUpload = await TemporaryUpload.findByPk(pdfEntry.pdfKey);
+            if (tempUpload) {
+                buffer = tempUpload.fileData;
+            } else {
+                // Fallback to disk storage (for legacy records)
+                const filePath = path.join(TEMP_UPLOAD_DIR, pdfEntry.pdfKey);
+                if (fs.existsSync(filePath)) {
+                    buffer = fs.readFileSync(filePath);
+                } else {
+                    return sendError(res, `Frontmatter PDF file for "${type}" not found on disk or database`, 404);
+                }
             }
-            buffer = fs.readFileSync(filePath);
         } else if (pdfEntry.data) {
             const base64Data = (pdfEntry.data as string).replace(/^data:application\/pdf;base64,/, '');
             buffer = Buffer.from(base64Data, 'base64');

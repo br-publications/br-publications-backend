@@ -140,7 +140,7 @@ class RecruitmentSubmission
                     allowNull: true,
                 },
                 personalImage: {
-                    type: DataTypes.STRING(500),
+                    type: DataTypes.TEXT('long'),
                     allowNull: true,
                 },
                 appliedRole: {

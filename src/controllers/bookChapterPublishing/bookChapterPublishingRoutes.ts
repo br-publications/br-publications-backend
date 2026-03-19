@@ -22,15 +22,9 @@ const upload = multer({
     },
 });
 
-// Multer for disk-based PDF uploads (no size limit — handled by Express limit)
-const TEMP_DIR = path.resolve('uploads/temp');
-if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
-
+// Multer for memory-based PDF uploads
 const pdfUpload = multer({
-    storage: multer.diskStorage({
-        destination: (_req, _file, cb) => cb(null, TEMP_DIR),
-        filename: (_req, file, cb) => cb(null, `${Date.now()}-${file.originalname}`),
-    }),
+    storage: multer.memoryStorage(),
     fileFilter: (_req, file, cb) => {
         if (file.mimetype === 'application/pdf') cb(null, true);
         else cb(new Error('Only PDF files are allowed'));

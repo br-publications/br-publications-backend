@@ -9,6 +9,7 @@ import { Sequelize } from 'sequelize';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
 import { startTokenCleanup } from './utils/cleanupTokens';
+import { startStorageCleanup } from './utils/cleanupStorage';
 import { startMonthlyReportScheduler } from './utils/monthlyReportScheduler';
 import { seedSuperAdmin } from './utils/superAdminSeeder';
 // import sequelize from './config/database';
@@ -170,6 +171,7 @@ const startServer = async () => {
     const RecruitmentSubmission = (await import('./models/recruitmentSubmission')).default;
     const ProjectInternshipSubmission = (await import('./models/projectInternshipSubmission')).default;
     const ContactInquiry = (await import('./models/contactInquiry')).default;
+    const TemporaryUpload = (await import('./models/temporaryUpload')).default;
 
     // Custom role models
     const { Role, Permission, RolePermission, UserCustomRole } = await import('./models/customRole');
@@ -216,8 +218,9 @@ const startServer = async () => {
       CommunicationTemplate,
       PublishedBookChapter,
       DeliveryAddress,
-      Conference,
-      ConferenceArticle,
+      Conference: Conference,
+      ConferenceArticle: ConferenceArticle,
+      TemporaryUpload: TemporaryUpload,
     };
 
     // 2. Initialize each model (handle both 'initialize' and 'initModel' methods)
@@ -245,8 +248,9 @@ const startServer = async () => {
 
 
 
-    // Start token cleanup job
+    // Start cleanup jobs
     startTokenCleanup();
+    startStorageCleanup();
 
 
     // Start monthly report scheduler
