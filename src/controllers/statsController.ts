@@ -246,10 +246,10 @@ export const getEngagementStats = async (req: Request, res: Response): Promise<v
 
             // 2. Publishing Trends (Books over 12 mo)
             seq.query(`
-                SELECT DATE_TRUNC('month', "createdAt") AS month, COUNT(id) AS count 
+                SELECT DATE_TRUNC('month', created_at) AS month, COUNT(id) AS count 
                 FROM published_books 
-                WHERE "createdAt" >= (NOW() - INTERVAL '12 months') 
-                GROUP BY DATE_TRUNC('month', "createdAt") 
+                WHERE created_at >= (NOW() - INTERVAL '12 months') 
+                GROUP BY DATE_TRUNC('month', created_at) 
                 ORDER BY month ASC
     `, { type: QueryTypes.SELECT }),
 
@@ -369,7 +369,7 @@ export const buildMonthlyReportData = async (seq: any, startDate: Date, endDate:
         }),
 
         // 3. Published Books (textbooks)
-        seq.query(`SELECT COUNT(*) AS total FROM published_books WHERE "createdAt" BETWEEN :start AND :end`, {
+        seq.query(`SELECT COUNT(*) AS total FROM published_books WHERE created_at BETWEEN :start AND :end`, {
             replacements: { start: startISO, end: endISO }, type: QueryTypes.SELECT,
         }),
         // 3b. Published Book Chapters

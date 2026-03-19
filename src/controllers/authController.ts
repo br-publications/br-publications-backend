@@ -312,17 +312,28 @@ export const login = async (req: AuthRequest, res: Response) => {
 export const verifyLoginOTP = async (req: AuthRequest, res: Response) => {
   try {
     const { email, otp } = req.body;
+    console.log('🔍 verifyLoginOTP request:', { email, otp });
 
     const user = await User.findOne({
       where: { email: email.toLowerCase().trim() }
     });
 
     if (!user) {
+      console.warn('❌ verifyLoginOTP: User not found for email:', email);
       return sendError(res, 'User not found', 404);
     }
 
+    console.log('👤 verifyLoginOTP: User found:', { 
+      id: user.id, 
+      emailVerified: user.emailVerified,
+      otpAttempts: user.otpAttempts,
+      hasOtp: !!user.emailOtp,
+      otpExpiry: user.emailOtpExpiry
+    });
+
     // Check OTP attempts
     if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+      console.warn('⚠️ verifyLoginOTP: Max OTP attempts exceeded for user:', user.email);
       user.emailOtp = null;
       user.emailOtpExpiry = null;
       await user.save();
@@ -335,15 +346,18 @@ export const verifyLoginOTP = async (req: AuthRequest, res: Response) => {
 
     // Check OTP expiry
     if (!user.emailOtpExpiry || new Date() > user.emailOtpExpiry) {
+      console.warn('⏰ verifyLoginOTP: OTP expired for user:', user.email);
       return sendError(res, 'OTP has expired. Please login again.', 400);
     }
 
     // Verify OTP
+    console.log('🧪 verifyLoginOTP: Comparing OTPs:', { provided: otp.trim(), stored: user.emailOtp });
     if (user.emailOtp !== otp.trim()) {
       user.otpAttempts += 1;
       await user.save();
 
       const attemptsLeft = MAX_OTP_ATTEMPTS - user.otpAttempts;
+      console.warn('❌ verifyLoginOTP: Invalid OTP. Attempts left:', attemptsLeft);
       return sendError(
         res,
         `Invalid OTP. ${attemptsLeft} attempt(s) remaining.`,
@@ -351,6 +365,7 @@ export const verifyLoginOTP = async (req: AuthRequest, res: Response) => {
       );
     }
 
+    console.log('✅ verifyLoginOTP: OTP verified successfully');
     // Clear OTP and update last login
     user.emailOtp = null;
     user.emailOtpExpiry = null;
@@ -359,6 +374,7 @@ export const verifyLoginOTP = async (req: AuthRequest, res: Response) => {
     await user.save();
 
     // Generate JWT token
+    console.log('🔑 verifyLoginOTP: Generating JWT...');
     const token = generateToken({
       userId: user.id,
       email: user.email,
@@ -376,13 +392,14 @@ export const verifyLoginOTP = async (req: AuthRequest, res: Response) => {
       profilePicture: user.profilePicture,
     };
 
+    console.log('🎉 verifyLoginOTP: Success');
     return sendSuccess(
       res,
       { user: userData, token },
       'Login successful!'
     );
   } catch (error) {
-    console.error('Verify login OTP error:', error);
+    console.error('💥 verifyLoginOTP error:', error);
     return sendError(res, 'OTP verification failed. Please try again.', 500);
   }
 };
