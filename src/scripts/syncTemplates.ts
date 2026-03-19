@@ -62,9 +62,12 @@ export const syncTemplatesFromConstants = async () => {
                 if ((tpl as any).description) model.description = (tpl as any).description;
                 
                 // If it's a new system-wide update, we might want to update the content too
-                // But generally we avoid overwriting user edits in DB. 
                 // For this specific task, we'll ensure content is synced if it was empty/null
                 if (!model.content) model.content = tpl.content;
+
+                // Also sync the new columns for existing templates
+                model.htmlContent = tpl.content.includes('<html') || tpl.content.includes('<!DOCTYPE') ? tpl.content : null;
+                model.contentMode = (tpl.content.includes('<html') || tpl.content.includes('<!DOCTYPE')) ? 'html' : 'rich';
                 
                 await model.save();
                 console.log(`✅ Updated metadata for template: ${code}`);

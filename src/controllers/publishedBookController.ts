@@ -76,9 +76,9 @@ export const getAllBooks = async (req: Request, res: Response) => {
             },
         }, 'Books retrieved successfully');
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching books:', error);
-        return sendError(res, 'Failed to fetch books', 500);
+        return res.status(500).json({ success: false, message: 'Failed to fetch books', error: error.message });
     }
 };
 

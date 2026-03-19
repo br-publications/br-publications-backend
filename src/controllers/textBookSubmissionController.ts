@@ -313,8 +313,8 @@ export const getMySubmissions = async (req: AuthRequest, res: Response) => {
         if (search) {
             where[Op.or] = [
                 { bookTitle: { [Op.iLike]: `%${search}%` } },
-                Sequelize.literal(`(json_extract_path_text(CAST("TextBookSubmission"."mainAuthor" AS JSON), 'firstName') || ' ' || json_extract_path_text(CAST("TextBookSubmission"."mainAuthor" AS JSON), 'lastName')) ILIKE '%${search}%'`),
-                Sequelize.literal(`json_extract_path_text(CAST("TextBookSubmission"."mainAuthor" AS JSON), 'email') ILIKE '%${search}%'`),
+                Sequelize.literal(`("mainAuthor"->>'firstName' || ' ' || "mainAuthor"->>'lastName') ILIKE '%${search}%'`),
+                Sequelize.literal(`"mainAuthor"->>'email' ILIKE '%${search}%'`),
                 { isbnNumber: { [Op.iLike]: `%${search}%` } }
             ];
         }
@@ -488,8 +488,8 @@ export const getAdminSubmissions = async (req: AuthRequest, res: Response) => {
             where[Op.or] = [
                 { bookTitle: { [Op.iLike]: `%${search}%` } },
                 // JSON search with Sequelize literal to ensure correct casting and concatenation for full name search
-                Sequelize.literal(`(json_extract_path_text(CAST("TextBookSubmission"."mainAuthor" AS JSON), 'firstName') || ' ' || json_extract_path_text(CAST("TextBookSubmission"."mainAuthor" AS JSON), 'lastName')) ILIKE '%${search}%'`),
-                Sequelize.literal(`json_extract_path_text(CAST("TextBookSubmission"."mainAuthor" AS JSON), 'email') ILIKE '%${search}%'`),
+                Sequelize.literal(`("mainAuthor"->>'firstName' || ' ' || "mainAuthor"->>'lastName') ILIKE '%${search}%'`),
+                Sequelize.literal(`"mainAuthor"->>'email' ILIKE '%${search}%'`),
                 { isbnNumber: { [Op.iLike]: `%${search}%` } }
             ];
         }
@@ -539,7 +539,7 @@ export const getAdminSubmissions = async (req: AuthRequest, res: Response) => {
         });
     } catch (error: any) {
         console.error('Get admin submissions error:', error);
-        return sendError(res, `Failed to retrieve submissions: ${error.message}`, 500);
+        return res.status(500).json({ success: false, message: 'Failed to retrieve submissions', error: error.message });
     }
 };
 
@@ -1299,7 +1299,7 @@ export const startPublication = async (req: AuthRequest, res: Response) => {
         }
 
         // Validate current status
-        if (submission.status !== TextBookStatus.ISBN_RECEIVED && 
+        if (submission.status !== TextBookStatus.ISBN_RECEIVED &&
             submission.status !== TextBookStatus.AWAITING_DELIVERY_DETAILS &&
             submission.status !== TextBookStatus.DELIVERY_ADDRESS_RECEIVED) {
             await transaction.rollback();
@@ -1537,10 +1537,10 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
         // Notify author
         const authorEmail = submission.mainAuthor.email;
         const authorName = `${submission.mainAuthor.firstName} ${submission.mainAuthor.lastName}`;
-        
+
         // Find user by email for DB notification (optional)
         const authorUser = await User.findOne({ where: { email: authorEmail, isActive: true } });
-        
+
         if (authorUser) {
             // DB Notification (only if user exists)
             await createNotification(
@@ -1609,32 +1609,10 @@ export const checkIsbnAvailability = async (req: AuthRequest, res: Response) => 
             attributes: ['isbn']
         });
 
-        // 2. Check TextBookSubmission table (active submissions only)
-        // Exclude REJECTED and WITHDRAWN statuses
-        const activeSubmissions = await TextBookSubmission.findAll({
-            where: {
-                isbnNumber: {
-                    [Op.in]: normalizedIsbns
-                },
-                status: {
-                    [Op.notIn]: [
-                        TextBookStatus.PROPOSAL_REJECTED,
-                        TextBookStatus.SUBMISSION_REJECTED,
-                        TextBookStatus.WITHDRAWN
-                    ]
-                }
-            },
-            attributes: ['isbnNumber']
-        });
-
         const existingIsbns = new Set<string>();
 
         publishedBooks.forEach(book => {
             if (book.isbn) existingIsbns.add(book.isbn);
-        });
-
-        activeSubmissions.forEach(sub => {
-            if (sub.isbnNumber) existingIsbns.add(sub.isbnNumber);
         });
 
         return sendSuccess(res, { existingIsbns: Array.from(existingIsbns) });
@@ -2004,9 +1982,9 @@ export const getSubmissionStats = async (req: AuthRequest, res: Response) => {
             byStatus: result,
             aggregated
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Get submission stats error:', error);
-        return sendError(res, 'Failed to retrieve submission statistics', 500);
+        return res.status(500).json({ success: false, message: 'Failed to retrieve submission statistics', error: error.message });
     }
 };
 

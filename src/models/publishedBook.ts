@@ -87,6 +87,7 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                 submissionId: {
                     type: DataTypes.INTEGER,
                     allowNull: true,
+                    field: 'submission_id',
                     references: {
                         model: 'book_chapter_submissions',
                         key: 'id',
@@ -95,6 +96,7 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                 textBookSubmissionId: {
                     type: DataTypes.INTEGER,
                     allowNull: true,
+                    // Note: this column was added as camelCase in migration 20260213060747
                     references: {
                         model: 'text_book_submissions',
                         key: 'id',
@@ -104,57 +106,63 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                     type: DataTypes.ENUM('CHAPTER', 'TEXTBOOK'),
                     allowNull: false,
                     defaultValue: 'CHAPTER'
+                    // Note: this column was added as camelCase in migration 20260213060747
                 },
                 title: {
-                    type: DataTypes.STRING(255),
+                    type: DataTypes.STRING(500),
                     allowNull: false,
                 },
                 author: {
-                    type: DataTypes.STRING(255),
+                    type: DataTypes.STRING(500),
                     allowNull: false,
                 },
                 coAuthors: {
-                    type: DataTypes.STRING(1000), // Comma separated
+                    type: DataTypes.TEXT,
                     allowNull: true,
+                    field: 'co_authors',
                 },
                 coverImage: {
-                    type: DataTypes.STRING(255),
+                    type: DataTypes.TEXT,
                     allowNull: true,
+                    field: 'cover_image',
                 },
                 category: {
-                    type: DataTypes.STRING(100),
+                    type: DataTypes.STRING(200),
                     allowNull: false,
                 },
                 description: {
                     type: DataTypes.TEXT,
-                    allowNull: false,
+                    allowNull: true,
                 },
                 isbn: {
                     type: DataTypes.STRING(50),
                     allowNull: false,
                 },
                 publishedDate: {
-                    type: DataTypes.STRING(10), // Year "2024"
+                    type: DataTypes.STRING(10),
                     allowNull: false,
+                    field: 'published_date',
                 },
                 pages: {
                     type: DataTypes.INTEGER,
                     allowNull: false,
                 },
                 indexedIn: {
-                    type: DataTypes.STRING(255),
+                    type: DataTypes.TEXT,
                     allowNull: true,
+                    field: 'indexed_in',
                 },
                 releaseDate: {
                     type: DataTypes.STRING(20),
                     allowNull: true,
+                    field: 'release_date',
                 },
                 copyright: {
                     type: DataTypes.STRING(100),
                     allowNull: true,
                 },
                 doi: {
-                    type: DataTypes.STRING(100),
+                    type: DataTypes.STRING(200),
                     allowNull: true,
                 },
                 synopsis: {
@@ -168,10 +176,12 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                 tableContents: {
                     type: DataTypes.JSONB,
                     allowNull: true,
+                    field: 'table_contents',
                 },
                 authorBiographies: {
                     type: DataTypes.JSONB,
                     allowNull: true,
+                    field: 'author_biographies',
                 },
                 archives: {
                     type: DataTypes.JSONB,
@@ -179,7 +189,7 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                 },
                 pricing: {
                     type: DataTypes.JSONB,
-                    allowNull: true, // "softCopyPrice, hardCopyPrice, bundlePrice"
+                    allowNull: true,
                 },
                 googleLink: {
                     type: DataTypes.STRING(500),
@@ -196,12 +206,22 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                 isHidden: {
                     type: DataTypes.BOOLEAN,
                     allowNull: false,
-                    defaultValue: false
+                    defaultValue: false,
+                    field: 'is_hidden',
                 },
                 isFeatured: {
                     type: DataTypes.BOOLEAN,
                     allowNull: false,
-                    defaultValue: false
+                    defaultValue: false,
+                    field: 'is_featured',
+                },
+                createdAt: {
+                    type: DataTypes.DATE,
+                    field: 'created_at',
+                },
+                updatedAt: {
+                    type: DataTypes.DATE,
+                    field: 'updated_at',
                 }
             },
             {
