@@ -105,11 +105,20 @@ module.exports = {
     },
 
     down: async (queryInterface, Sequelize) => {
-        // Remove new columns
-        await queryInterface.removeColumn('text_book_submissions', 'proposalAcceptedDate');
-        await queryInterface.removeColumn('text_book_submissions', 'isbnAppliedDate');
-        await queryInterface.removeColumn('text_book_submissions', 'isbnReceivedDate');
-        await queryInterface.removeColumn('text_book_submissions', 'publicationStartDate');
+        // Remove new columns if they exist
+        const table = await queryInterface.describeTable('text_book_submissions');
+        if (table.proposalAcceptedDate) {
+            await queryInterface.removeColumn('text_book_submissions', 'proposalAcceptedDate');
+        }
+        if (table.isbnAppliedDate) {
+            await queryInterface.removeColumn('text_book_submissions', 'isbnAppliedDate');
+        }
+        if (table.isbnReceivedDate) {
+            await queryInterface.removeColumn('text_book_submissions', 'isbnReceivedDate');
+        }
+        if (table.publicationStartDate) {
+            await queryInterface.removeColumn('text_book_submissions', 'publicationStartDate');
+        }
 
         // Revert to old enum (simplified - in production you'd want to preserve data better)
         await queryInterface.sequelize.query(`
