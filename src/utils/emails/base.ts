@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 
 /**
  * Categories for different email purposes
@@ -117,6 +118,38 @@ export const transporter = nodemailer.createTransport({
 const rawFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
 export const FRONTEND_URL = rawFrontendUrl.endsWith('/') ? rawFrontendUrl : `${rawFrontendUrl}/`;
 
+const emailProvider = (process.env.EMAIL_PROVIDER || 'smtp').toLowerCase();
+
+const sendEmailViaSendGrid = async (
+    to: string,
+    subject: string,
+    html: string,
+    text?: string
+): Promise<void> => {
+    const apiKey = process.env.SENDGRID_API_KEY;
+    if (!apiKey) {
+        throw new Error('SENDGRID_API_KEY is required when EMAIL_PROVIDER=sendgrid');
+    }
+
+    sgMail.setApiKey(apiKey);
+
+    const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    if (!from) {
+        throw new Error('EMAIL_FROM or EMAIL_USER is required for SendGrid');
+    }
+
+    const message = {
+        to,
+        from,
+        subject,
+        html,
+        text: text || html.replace(/<[^>]*>/g, ''),
+    };
+
+    const [response] = await sgMail.send(message);
+    console.log(`✅ SendGrid email sent successfully to ${to}. StatusCode: ${response.statusCode}`);
+};
+
 /**
  * Base email sending function — updated to support categories.
  */
@@ -129,6 +162,11 @@ export const sendEmail = async (
     waitForResponse: boolean = false
 ): Promise<void> => {
     try {
+        if (emailProvider === 'sendgrid') {
+            await sendEmailViaSendGrid(to, subject, html, text);
+            return;
+        }
+
         const { transporter: activeTransporter, from } = getTransporter(category);
 
         const sendPromise = activeTransporter.sendMail({
