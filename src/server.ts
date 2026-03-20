@@ -259,6 +259,18 @@ const startServer = async () => {
     // Seed permanent Default Admin
     await seedSuperAdmin();
 
+    // Optional auto sync communication templates on startup
+    if ((process.env.SYNC_TEMPLATES || '').toLowerCase() === 'true') {
+      try {
+        const { syncTemplatesFromConstants } = await import('./scripts/syncTemplates');
+        console.log('🔧 Auto-syncing communication templates from constants...');
+        await syncTemplatesFromConstants();
+        console.log('✅ Auto-sync templates completed successfully.');
+      } catch (syncErr) {
+        console.error('❌ Auto-sync templates failed on startup:', syncErr);
+      }
+    }
+
     // Import routes AFTER models are loaded
     const authRoutes = (await import('./routes/authRoutes')).default;
     const userRoutes = (await import('./routes/userRoutes')).default;
