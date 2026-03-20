@@ -1,6 +1,7 @@
 export const AUTH_TEMPLATES = {
     EMAIL_VERIFICATION: {
         subject: 'Email Verification - BR Publications',
+        variables: ['name', 'otp', 'currentYear'],
         content: `<!DOCTYPE html>
 <html lang="en">
 
@@ -364,6 +365,7 @@ export const AUTH_TEMPLATES = {
     },
     PASSWORD_RESET_OTP: {
         subject: 'Password Reset OTP - BR Publications',
+        variables: ['name', 'otp', 'currentYear'],
         content: `<!DOCTYPE html>
 <html lang="en">
 
@@ -606,7 +608,7 @@ This email was sent because a password reset request was initiated on your accou
     ACCOUNT_DEACTIVATED: {
         subject: 'Account Deactivated - ResNova',
         description: 'Sent when an administrator deactivates a user account.',
-        variables: ['name'],
+        variables: ['name', 'currentYear'],
         content: `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -674,7 +676,7 @@ This email was sent because a password reset request was initiated on your accou
     ACCOUNT_REACTIVATED: {
         subject: 'Account Reactivated - ResNova',
         description: 'Sent when an administrator reactivates a user account.',
-        variables: ['name', 'loginUrl'],
+        variables: ['name', 'loginUrl', 'currentYear'],
         content: `<!DOCTYPE html>
 <html lang="en">
 <head>

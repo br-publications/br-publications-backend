@@ -1,6 +1,7 @@
 export const BOOK_CHAPTER_TEMPLATES = {
     BOOK_CHAPTER_SUBMISSION_RECEIVED: {
         subject: 'Chapter Submission Received: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'submissionDate', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -137,6 +138,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_SUBMISSION_ADMIN: {
         subject: 'New Chapter Submission: {{bookTitle}}',
+        variables: ['adminName', 'authorName', 'bookTitle', 'chapters', 'submissionDate', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -277,6 +279,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOk_CHAPTER_EDITOR_ASSIGNED: {
         subject: 'Editor Assignment: {{bookTitle}}',
+        variables: ['editorName', 'bookTitle', 'assignedBy', 'chapters', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -413,7 +416,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVIEWER_ASSIGNED: {
         subject: 'Reviewer Assignment: {{chapterTitle}}',
-        variables: ['reviewerName', 'bookTitle', 'chapterTitle', 'assignedBy', 'deadline', 'frontendUrl'],
+        variables: ['reviewerName', 'bookTitle', 'chapterTitle', 'assignedBy', 'deadline', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -558,6 +561,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_DECISION_APPROVED: {
         subject: '{{stage}} Approved: {{bookTitle}}',
+        variables: ['stage', 'name', 'bookTitle', 'editorNotes', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -701,6 +705,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_DECISION_REJECTED: {
         subject: '{{stage}} Decision: {{bookTitle}}',
+        variables: ['stage', 'name', 'bookTitle', 'editorNotes', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -833,6 +838,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVIEWER_ASSIGNMENT_RESPONSE: {
         subject: 'Reviewer Assignment {{action}}: {{bookTitle}}',
+        variables: ['action', 'bookTitle', 'userName', 'reviewerName', 'chapterTitle', 'reasonSection', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -919,6 +925,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVISION_REQUESTED: {
         subject: 'Revision Requested: {{chapterTitle}}',
+        variables: ['chapterTitle', 'name', 'bookTitle', 'revisionNumber', 'reviewerComments', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1021,6 +1028,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVISION_SUBMITTED: {
         subject: 'Revision Submitted: {{chapterTitle}}',
+        variables: ['chapterTitle', 'userName', 'authorName', 'bookTitle', 'revisionNumber', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1117,7 +1125,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVISION_SUBMITTED_REVIEWER: {
         subject: 'Revision Submitted: {{chapterTitle}}',
-        variables: ['userName', 'authorName', 'bookTitle', 'chapterTitle', 'revisionNumber', 'frontendUrl'],
+        variables: ['userName', 'authorName', 'bookTitle', 'chapterTitle', 'revisionNumber', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1214,7 +1222,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVISION_SUBMITTED_REVIEWER_V2: {
         subject: 'Revision Submitted: {{chapterTitle}}',
-        variables: ['userName', 'authorName', 'bookTitle', 'chapterTitle', 'revisionNumber', 'authorMessage', 'frontendUrl'],
+        variables: ['userName', 'authorName', 'bookTitle', 'chapterTitle', 'revisionNumber', 'authorMessage', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1315,7 +1323,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_REVIEW_SUBMITTED: {
         subject: 'Review Submitted: {{chapterTitle}}',
-        variables: ['editorName', 'reviewerName', 'bookTitle', 'chapterTitle', 'recommendation', 'frontendUrl'],
+        variables: ['editorName', 'reviewerName', 'bookTitle', 'chapterTitle', 'recommendation', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1388,7 +1396,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_ALL_REVIEWS_COMPLETED: {
         subject: 'All Reviews Completed: {{bookTitle}}',
-        variables: ['editorName', 'bookTitle', 'chapters', 'authorName', 'reviewSummary', 'frontendUrl'],
+        variables: ['editorName', 'bookTitle', 'chapters', 'authorName', 'reviewSummary', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">

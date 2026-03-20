@@ -1,6 +1,7 @@
 export const TEXTBOOK_TEMPLATES = {
     TEXTBOOK_SUBMISSION_ADMIN: {
         subject: 'New Textbook Submission Received',
+        variables: ['adminName', 'authorName', 'bookTitle', 'submissionDate', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -131,6 +132,7 @@ export const TEXTBOOK_TEMPLATES = {
     },
     TEXTBOOK_SUBMISSION_RECEIVED: {
         subject: 'Submission Received: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'submissionDate', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -258,6 +260,7 @@ export const TEXTBOOK_TEMPLATES = {
     },
     TEXTBOOK_PROPOSAL_ACCEPTED: {
         subject: 'Proposal Accepted: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'adminName', 'adminNotes', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -381,6 +384,7 @@ export const TEXTBOOK_TEMPLATES = {
     },
     TEXTBOOK_PROPOSAL_REJECTED: {
         subject: 'Proposal Update: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'adminName', 'adminNotes', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -482,6 +486,7 @@ export const TEXTBOOK_TEMPLATES = {
     },
     TEXTBOOK_REVISION_REQUESTED: {
         subject: 'Revision Requested: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'revisionNumber', 'adminName', 'comments', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -613,6 +618,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_REVISION_SUBMITTED: {
         subject: 'Revision Submitted: {{bookTitle}}',
+        variables: ['name', 'authorName', 'revisionNumber', 'bookTitle', 'authorMessage', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -754,6 +760,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_DECISION_APPROVED: {
         subject: 'Textbook Approved: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'adminName', 'adminNotes', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -882,6 +889,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_DECISION_REJECTED: {
         subject: 'Textbook Decision: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'adminName', 'adminNotes', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -983,6 +991,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_STATUS_CHANGED: {
         subject: 'Status Update: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'changedBy', 'previousStatus', 'newStatus', 'currentYear'],
         content: `
         <!DOCTYPE html>
 <html lang="en">
@@ -1128,6 +1137,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_DELIVERY_DETAILS_REQUESTED: {
         subject: 'Delivery Details Required: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'isbnNumber', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1261,6 +1271,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_PUBLISHED_AUTHOR: {
         subject: 'Congratulations! Your Textbook is Published: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'publishDate', 'isbn', 'doi', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1418,6 +1429,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_BULK_UPLOAD_REPORT: {
         subject: 'Bulk Upload Report - {{currentDate}}',
+        variables: ['currentDate', 'name', 'total', 'successCount', 'failureCount', 'duration', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -1510,6 +1522,7 @@ This is an automated notification from <strong>BR Publications</strong>.
     },
     TEXTBOOK_COMMENT: {
         subject: 'New {{isReplyUppercase}}: {{bookTitle}}',
+        variables: ['isReplyUppercase', 'bookTitle', 'name', 'commenterName', 'isReplyText', 'message', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">

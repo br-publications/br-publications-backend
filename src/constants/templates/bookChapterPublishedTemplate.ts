@@ -1,6 +1,7 @@
 export const BOOK_CHAPTER_PUBLISHED_TEMPLATE = {
     BOOK_CHAPTER_PUBLISHED: {
         subject: 'Your Book Chapter Has Been Published',
+        variables: ['authorName', 'bookTitle', 'publicationDate', 'isbn', 'keywords'],
         content: `
     <!DOCTYPE html>
 <html lang="en">
