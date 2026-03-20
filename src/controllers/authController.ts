@@ -293,7 +293,16 @@ export const login = async (req: AuthRequest, res: Response) => {
     await user.save();
 
     // Send OTP email
-    await sendOTPEmail(user.email, loginOtp, user.fullName);
+    try {
+      await sendOTPEmail(user.email, loginOtp, user.fullName);
+    } catch (emailError) {
+      console.error('Login OTP email error:', emailError);
+      return sendError(
+        res,
+        'Unable to send login OTP. Please verify email settings and try again.',
+        503
+      );
+    }
 
     return sendSuccess(
       res,
