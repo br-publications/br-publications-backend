@@ -73,34 +73,45 @@ const getTransporter = (category: EmailCategory): { transporter: nodemailer.Tran
     const cacheKey = `${host}:${port}:${user}`;
 
     if (!transporters.has(cacheKey)) {
+        const connectionTimeout = Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS) || 10000;
+
         const newTransporter = nodemailer.createTransport({
             host,
             port,
-            secure: false, // true for 465, false for other ports
+            secure: port === 465, // true for SMTPS on 465, false for STARTTLS on 587
             auth: { user, pass },
-            tls: { rejectUnauthorized: false }
+            connectionTimeout,
+            greetingTimeout: connectionTimeout,
+            socketTimeout: connectionTimeout,
+            tls: {
+                rejectUnauthorized: false,
+            },
         });
         transporters.set(cacheKey, newTransporter);
     }
 
     return {
         transporter: transporters.get(cacheKey)!,
-        from: `"BR Publications" <${from}>`
+        from: `"BR Publications" <${from}>`,
     };
 };
 
 // For backward compatibility while refactoring
+const defaultPort = Number(process.env.EMAIL_PORT) || 587;
 export const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT) || 587,
-    secure: false,
+    port: defaultPort,
+    secure: defaultPort === 465,
     auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASSWORD,
     },
+    connectionTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS) || 10000,
+    greetingTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS) || 10000,
+    socketTimeout: Number(process.env.EMAIL_CONNECTION_TIMEOUT_MS) || 10000,
     tls: {
-        rejectUnauthorized: false
-    }
+        rejectUnauthorized: false,
+    },
 });
 
 const rawFrontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
