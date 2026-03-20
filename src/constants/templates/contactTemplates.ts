@@ -169,10 +169,12 @@ export const CONTACT_INQUIRY_ACKNOWLEDGED_HTML = `<!DOCTYPE html>
 export const CONTACT_TEMPLATES = {
   CONTACT_INQUIRY_ADMIN: {
     subject: 'New Contact Inquiry from {{name}}',
+    variables: ['adminName', 'name', 'email', 'phone', 'receivedDate', 'message', 'frontendUrl', 'currentYear'],
     content: CONTACT_INQUIRY_ADMIN_HTML
   },
   CONTACT_INQUIRY_ACKNOWLEDGED: {
     subject: "We've Responded to Your Inquiry — BR Publications",
+    variables: ['name', 'adminMessage', 'originalMessage', 'year', 'currentYear'],
     content: CONTACT_INQUIRY_ACKNOWLEDGED_HTML
   }
 };

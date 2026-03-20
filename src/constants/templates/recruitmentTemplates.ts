@@ -499,18 +499,22 @@ export const RECRUITMENT_DECISION_REJECTED_HTML = `<!DOCTYPE html>
 export const RECRUITMENT_TEMPLATES = {
     RECRUITMENT_APPLICATION_ADMIN: {
         subject: 'New Recruitment Application: {{applicantName}} - {{appliedRole}}',
+        variables: ['adminName', 'applicantName', 'appliedRole', 'applicationId', 'submissionDate', 'currentYear'],
         content: RECRUITMENT_APPLICATION_ADMIN_HTML
     },
     RECRUITMENT_SUBMISSION_RECEIVED: {
         subject: 'Application Received: {{appliedRole}} Role - BR Publications',
+        variables: ['name', 'appliedRole', 'applicationId', 'submissionDate', 'currentYear'],
         content: RECRUITMENT_SUBMISSION_RECEIVED_HTML
     },
     RECRUITMENT_DECISION_ACCEPTED: {
         subject: 'Welcome to the Team! Application Approved — BR Publications',
+        variables: ['name', 'applicationId', 'assignedRole', 'currentYear'],
         content: RECRUITMENT_DECISION_ACCEPTED_HTML
     },
     RECRUITMENT_DECISION_REJECTED: {
         subject: 'Update on Recruitment Application — BR Publications',
+        variables: ['name', 'applicationId', 'adminNotes', 'currentYear'],
         content: RECRUITMENT_DECISION_REJECTED_HTML
     }
 };

@@ -411,18 +411,22 @@ After reviewing your request, we regret to inform you that it could not be appro
 export const PROJECT_TEMPLATES = {
     PROJECT_APPLICATION_ADMIN: {
         subject: 'New Development Request: {{submissionType}}',
+        variables: ['submissionType', 'adminName', 'applicantName', 'applicationId', 'submissionDate', 'currentYear'],
         content: PROJECT_APPLICATION_ADMIN_HTML
     },
     PROJECT_SUBMISSION_RECEIVED: {
         subject: 'Application Received — {{submissionType}}',
+        variables: ['name', 'submissionType', 'applicationId', 'submissionDate', 'currentYear'],
         content: PROJECT_SUBMISSION_RECEIVED_HTML
     },
     PROJECT_DECISION_ACCEPTED: {
         subject: 'Good News: Your Application has been Accepted! — BR Publications',
+        variables: ['name', 'submissionType', 'applicationId', 'adminNotes', 'currentYear'],
         content: PROJECT_DECISION_ACCEPTED_HTML
     },
     PROJECT_DECISION_REJECTED: {
         subject: 'Update on Your Application — BR Publications',
+        variables: ['name', 'submissionType', 'applicationId', 'adminNotes', 'currentYear'],
         content: PROJECT_DECISION_REJECTED_HTML
     }
 };
