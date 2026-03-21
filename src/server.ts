@@ -178,6 +178,7 @@ const startServer = async () => {
 
     // Delivery Address
     const DeliveryAddress = (await import('./models/deliveryAddress')).default;
+    const OptionalDeliveryAddress = (await import('./models/optionalDeliveryAddress')).default;
 
     // Conference
     const Conference = (await import('./models/conference')).default;
@@ -218,6 +219,7 @@ const startServer = async () => {
       CommunicationTemplate,
       PublishedBookChapter,
       DeliveryAddress,
+      OptionalDeliveryAddress,
       Conference: Conference,
       ConferenceArticle: ConferenceArticle,
       TemporaryUpload: TemporaryUpload,
@@ -319,7 +321,9 @@ const startServer = async () => {
 
     // Delivery Address
     const deliveryAddressRoutes = (await import('./routes/deliveryAddressRoutes')).default;
+    const optionalDeliveryAddressRoutes = (await import('./routes/optionalDeliveryAddressRoutes')).default;
     app.use('/api/delivery-address', deliveryAddressRoutes);
+    app.use('/api/optional-delivery-address', optionalDeliveryAddressRoutes);
 
     // Communication Templates (Admin email template management)
     const communicationTemplateRoutes = (await import('./routes/communicationTemplateRoutes')).default;
