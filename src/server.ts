@@ -273,6 +273,21 @@ const startServer = async () => {
       }
     }
 
+    // Auto-run DB hotfixes (Enums, Table structures, etc.)
+    try {
+      console.log('🔧 Running automated DB hotfixes...');
+      const { fixEnum } = await import('./scripts/fix_enum');
+      const { fixEnums } = await import('./scripts/hotfix_all_enums');
+      const { fixTable } = await import('./scripts/hotfix_book_chapter_files');
+      
+      await fixEnum(sequelize);
+      await fixEnums(sequelize);
+      await fixTable(sequelize);
+      console.log('✅ Automated DB hotfixes completed successfully.');
+    } catch (hotfixErr) {
+      console.error('❌ Automated DB hotfixes failed:', hotfixErr);
+    }
+
     // Import routes AFTER models are loaded
     const authRoutes = (await import('./routes/authRoutes')).default;
     const userRoutes = (await import('./routes/userRoutes')).default;

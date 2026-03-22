@@ -17,6 +17,7 @@ import DeliveryAddress from '../../models/deliveryAddress';
 
 import { resolveDisplayBookTitle } from './commonController';
 
+
 /**
  * @route GET /api/book-chapters/editor/submissions
  * @desc Get all submissions assigned to current editor

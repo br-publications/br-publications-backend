@@ -32,7 +32,7 @@ module.exports = {
                     'ABSTRACT_SUBMITTED',
                     'ABSTRACT_ACCEPTED',
                     'ABSTRACT_REJECTED',
-                    'MANUSCRIPT_PENDING',
+                    'MANUSCRIPTS_PENDING',
                     'MANUSCRIPT_SUBMITTED',
                     'REVIEWERS_ASSIGNED',
                     'REVIEWER_PENDING_ACCEPTANCE',

@@ -296,14 +296,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Submission must be APPROVED, in PUBLICATION_IN_PROGRESS, or already PUBLISHED before publishing', 400);
         }
 
-        // Guard: Delivery address must be submitted before publishing
-        if (
-            submission.status === BookChapterStatus.PUBLICATION_IN_PROGRESS &&
-            !(submission as any).deliveryAddress
-        ) {
-            await transaction.rollback();
-            return sendError(res, 'Cannot publish: The author has not yet submitted their delivery address. Please wait for the author to provide delivery details.', 400);
-        }
+
 
         // Extract body fields
         const {

@@ -848,10 +848,10 @@ export const uploadChapterManuscript = async (req: AuthRequest, res: Response) =
 
         return sendSuccess(res, { chapter }, 'Manuscript uploaded successfully');
 
-    } catch (error) {
+    } catch (error: any) {
         if (transaction) await transaction.rollback();
         console.error('Error uploading chapter manuscript:', error);
-        return sendError(res, 'Failed to upload manuscript', 500);
+        return sendError(res, `Failed to upload manuscript: ${error?.message || JSON.stringify(error)}`, 500);
     }
 };
 
