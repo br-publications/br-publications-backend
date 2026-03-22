@@ -614,8 +614,8 @@ export const editorDecision = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Invalid decision. Must be "APPROVED" or "REJECTED"', 400);
         }
 
-        if (!notes) {
-            return sendError(res, 'Decision notes are mandatory', 400);
+        if (decision === 'REJECTED' && !notes) {
+            return sendError(res, 'Decision notes are mandatory when rejecting', 400);
         }
 
         const chapter = await chapterService.makeEditorDecision(

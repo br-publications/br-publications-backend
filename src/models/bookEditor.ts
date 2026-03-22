@@ -6,13 +6,14 @@ interface BookEditorAttributes {
     editorId: number;
     assignedBy: number;
     assignedAt: Date;
+    isPrimary: boolean;
     createdAt?: Date;
     updatedAt?: Date;
 }
 
 interface BookEditorCreationAttributes extends Optional<
     BookEditorAttributes,
-    'id' | 'assignedAt'
+    'id' | 'assignedAt' | 'isPrimary'
 > { }
 
 class BookEditor extends Model<
@@ -24,6 +25,7 @@ class BookEditor extends Model<
     public editorId!: number;
     public assignedBy!: number;
     public assignedAt!: Date;
+    public isPrimary!: boolean;
 
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -122,6 +124,11 @@ class BookEditor extends Model<
                     type: DataTypes.DATE,
                     allowNull: false,
                     defaultValue: DataTypes.NOW,
+                },
+                isPrimary: {
+                    type: DataTypes.BOOLEAN,
+                    allowNull: false,
+                    defaultValue: false,
                 },
             },
             {

@@ -5,6 +5,7 @@ import {
     getEditorsByBookTitle,
     getBooksByEditor,
     removeEditorAssignment,
+    setPrimaryEditor,
 } from '../controllers/bookEditorController';
 import { authenticate, requireVerified } from '../middleware/auth';
 import { requireAdmin } from '../middleware/roleBasedAccessControl.middleware';
@@ -59,6 +60,15 @@ router.delete(
     requireVerified,
     requireAdmin,
     removeEditorAssignment
+);
+
+// Set primary editor (Admin only)
+router.patch(
+    '/:bookTitleId/set-primary/:editorId',
+    authenticate,
+    requireVerified,
+    requireAdmin,
+    setPrimaryEditor
 );
 
 export default router;

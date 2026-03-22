@@ -178,6 +178,7 @@ const startServer = async () => {
 
     // Delivery Address
     const DeliveryAddress = (await import('./models/deliveryAddress')).default;
+    const OptionalDeliveryAddress = (await import('./models/optionalDeliveryAddress')).default;
 
     // Conference
     const Conference = (await import('./models/conference')).default;
@@ -218,6 +219,7 @@ const startServer = async () => {
       CommunicationTemplate,
       PublishedBookChapter,
       DeliveryAddress,
+      OptionalDeliveryAddress,
       Conference: Conference,
       ConferenceArticle: ConferenceArticle,
       TemporaryUpload: TemporaryUpload,
@@ -271,6 +273,21 @@ const startServer = async () => {
       }
     }
 
+    // Auto-run DB hotfixes (Enums, Table structures, etc.)
+    try {
+      console.log('🔧 Running automated DB hotfixes...');
+      const { fixEnum } = await import('./scripts/fix_enum');
+      const { fixEnums } = await import('./scripts/hotfix_all_enums');
+      const { fixTable } = await import('./scripts/hotfix_book_chapter_files');
+      
+      await fixEnum(sequelize);
+      await fixEnums(sequelize);
+      await fixTable(sequelize);
+      console.log('✅ Automated DB hotfixes completed successfully.');
+    } catch (hotfixErr) {
+      console.error('❌ Automated DB hotfixes failed:', hotfixErr);
+    }
+
     // Import routes AFTER models are loaded
     const authRoutes = (await import('./routes/authRoutes')).default;
     const userRoutes = (await import('./routes/userRoutes')).default;
@@ -319,7 +336,9 @@ const startServer = async () => {
 
     // Delivery Address
     const deliveryAddressRoutes = (await import('./routes/deliveryAddressRoutes')).default;
+    const optionalDeliveryAddressRoutes = (await import('./routes/optionalDeliveryAddressRoutes')).default;
     app.use('/api/delivery-address', deliveryAddressRoutes);
+    app.use('/api/optional-delivery-address', optionalDeliveryAddressRoutes);
 
     // Communication Templates (Admin email template management)
     const communicationTemplateRoutes = (await import('./routes/communicationTemplateRoutes')).default;

@@ -442,3 +442,67 @@ export const removeEditorAssignment = async (req: Request, res: Response) => {
         });
     }
 };
+
+/**
+ * @swagger
+ * /api/book-editors/{bookTitleId}/set-primary/{editorId}:
+ *   patch:
+ *     summary: Set an editor as primary for a book title
+ *     tags: [Book Editors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: bookTitleId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *       - in: path
+ *         name: editorId
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Primary editor set successfully
+ *       404:
+ *         description: Assignment not found
+ */
+export const setPrimaryEditor = async (req: Request, res: Response) => {
+    try {
+        const { bookTitleId, editorId } = req.params;
+
+        // Verify assignment exists
+        const assignment = await BookEditor.findOne({
+            where: { bookTitleId, editorId }
+        });
+
+        if (!assignment) {
+            return res.status(404).json({
+                success: false,
+                message: 'Editor assignment not found for this book title',
+            });
+        }
+
+        // Unset current primary editor for this book title
+        await BookEditor.update(
+            { isPrimary: false },
+            { where: { bookTitleId, isPrimary: true } }
+        );
+
+        // Set new primary editor
+        await assignment.update({ isPrimary: true });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Primary editor set successfully',
+        });
+    } catch (error: any) {
+        console.error('Error setting primary editor:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to set primary editor',
+            error: error.message,
+        });
+    }
+};
