@@ -377,7 +377,13 @@ export const editorDecision = async (req: AuthRequest, res: Response) => {
         return sendSuccess(res, submission, `Submission ${decision}ed successfully`);
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Editor decision rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Editor decision error:', error);
         return sendError(res, 'Failed to process decision', 500);
     }
@@ -610,7 +616,13 @@ export const assignReviewers = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'Reviewers assigned successfully');
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Assign reviewers rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Assign reviewers error:', error);
         return sendError(res, 'Failed to assign reviewers', 500);
     }
@@ -737,7 +749,13 @@ export const reassignReviewer = async (req: AuthRequest, res: Response) => {
         return sendSuccess(res, { newAssignment }, 'Reviewer reassigned successfully');
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Reassign reviewer rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Reassign reviewer error:', error);
         return sendError(res, 'Failed to reassign reviewer', 500);
     }

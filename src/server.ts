@@ -33,6 +33,15 @@ const sequelize = new Sequelize(
       acquire: 30000,
       idle: 10000,
     },
+    // SSL connection for Render production environment
+    ...(process.env.NODE_ENV === 'production' && {
+      dialectOptions: {
+        ssl: {
+          require: true,
+          rejectUnauthorized: false,
+        },
+      },
+    }),
   }
 );
 

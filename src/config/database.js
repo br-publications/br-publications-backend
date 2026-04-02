@@ -23,6 +23,13 @@ module.exports = {
       min: 0,
       acquire: 30000,
       idle: 10000
+    },
+    // SSL connection for Render production environment
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false
+      }
     }
   }
 };
