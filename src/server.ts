@@ -12,38 +12,38 @@ import { startTokenCleanup } from './utils/cleanupTokens';
 import { startStorageCleanup } from './utils/cleanupStorage';
 import { startMonthlyReportScheduler } from './utils/monthlyReportScheduler';
 import { seedSuperAdmin } from './utils/superAdminSeeder';
-// import sequelize from './config/database';
+import sequelize from './config/database';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
 // Database Configuration
-const sequelize = new Sequelize(
-  process.env.DB_NAME as string,
-  process.env.DB_USER as string,
-  process.env.DB_PASSWORD as string,
-  {
-    host: process.env.DB_HOST,
-    port: Number(process.env.DB_PORT) || 5432,
-    dialect: 'postgres',
-    logging: false,
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000,
-    },
-    // SSL connection for Render production environment
-    ...(process.env.NODE_ENV === 'production' && {
-      dialectOptions: {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false,
-        },
-      },
-    }),
-  }
-);
+// const sequelize = new Sequelize(
+//   process.env.DB_NAME as string,
+//   process.env.DB_USER as string,
+//   process.env.DB_PASSWORD as string,
+//   {
+//     host: process.env.DB_HOST,
+//     port: Number(process.env.DB_PORT) || 5432,
+//     dialect: 'postgres',
+//     logging: false,
+//     pool: {
+//       max: 5,
+//       min: 0,
+//       acquire: 30000,
+//       idle: 10000,
+//     },
+//     // SSL connection for Render production environment
+//     ...(process.env.NODE_ENV === 'production' && {
+//       dialectOptions: {
+//         ssl: {
+//           require: true,
+//           rejectUnauthorized: false,
+//         },
+//       },
+//     }),
+//   }
+// );
 
 // Swagger configuration
 const swaggerOptions = {
@@ -133,8 +133,16 @@ app.get('/health', (req: Request, res: Response) => {
 app.get('/health/db', async (req: Request, res: Response) => {
   try {
     await sequelize.authenticate();
-    res.json({ status: 'ok', message: 'Database connection is healthy' });
+    res.json({
+      status: 'ok',
+      message: 'Database connection is healthy',
+      pool: {
+        max: (sequelize.connectionManager as any).pool.max,
+        size: (sequelize.connectionManager as any).pool.size
+      }
+    });
   } catch (error) {
+    console.error('Database health check failed:', error);
     res.status(500).json({ status: 'error', message: 'Database connection failed' });
   }
 });
