@@ -275,7 +275,13 @@ export const submitTextBook = async (req: AuthRequest, res: Response) => {
             201
         );
     } catch (error: any) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Submit text book rollback error:', rollbackError);
+            }
+        }
         console.error('Submit text book error:', error);
         return sendError(res, 'Failed to submit text book', 500);
     }
@@ -656,7 +662,13 @@ export const proposalDecision = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, `Proposal ${decision}ed successfully`);
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Proposal decision rollback error:', rollbackError);
+            }
+        }
         console.error('Proposal decision error:', error);
         return sendError(res, 'Failed to process proposal decision', 500);
     }
@@ -780,7 +792,13 @@ export const requestRevision = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'Revision requested successfully');
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Request revision rollback error:', rollbackError);
+            }
+        }
         console.error('Request revision error:', error);
         return sendError(res, 'Failed to request revision', 500);
     }
@@ -931,7 +949,13 @@ export const submitRevision = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'Revision submitted successfully');
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Submit revision rollback error:', rollbackError);
+            }
+        }
         console.error('Submit revision error:', error);
         return sendError(res, 'Failed to submit revision', 500);
     }
@@ -1050,7 +1074,13 @@ export const finalDecision = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, `Submission ${decision}ed successfully`);
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Final decision rollback error:', rollbackError);
+            }
+        }
         console.error('Final decision error:', error);
         return sendError(res, 'Failed to process final decision', 500);
     }
@@ -1155,7 +1185,13 @@ export const applyIsbn = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'ISBN application submitted successfully');
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Apply ISBN rollback error:', rollbackError);
+            }
+        }
         console.error('Apply ISBN error:', error);
         return sendError(res, 'Failed to apply for ISBN', 500);
     }
@@ -1263,7 +1299,13 @@ export const receiveIsbn = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'ISBN recorded successfully');
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Receive ISBN rollback error:', rollbackError);
+            }
+        }
         console.error('Receive ISBN error:', error);
         return sendError(res, 'Failed to record ISBN', 500);
     }
@@ -1371,7 +1413,13 @@ export const startPublication = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'Publication started successfully');
     } catch (error) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Start publication rollback error:', rollbackError);
+            }
+        }
         console.error('Start publication error:', error);
         return sendError(res, 'Failed to start publication', 500);
     }
@@ -1571,10 +1619,16 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, 'Text book published successfully');
     } catch (error: any) {
-        if (transaction) await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Publish text book rollback error:', rollbackError);
+            }
+        }
 
         if (error.errors) {
-
+            // Optional: Handle validation errors
         }
         return sendError(res, `Failed to publish text book: ${error.message}${error.errors ? ' - ' + JSON.stringify(error.errors) : ''}`, 500);
     }

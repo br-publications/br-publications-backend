@@ -331,7 +331,7 @@ export const submitBookChapter = async (req: AuthRequest, res: Response) => {
             try {
                 await transaction.rollback();
             } catch (rollbackError) {
-                console.error('❌ Transaction rollback failed:', rollbackError);
+                console.error('Submit book chapter rollback error:', rollbackError);
             }
         }
 
@@ -480,7 +480,13 @@ export const updateSubmission = async (req: AuthRequest, res: Response) => {
         return sendSuccess(res, submission, 'Submission updated successfully');
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Update submission rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Update submission error:', error);
         return sendError(res, 'Failed to update submission', 500);
     }
@@ -988,7 +994,13 @@ export const uploadFullChapter = async (req: AuthRequest, res: Response) => {
             201
         );
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Upload full chapter rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Upload full chapter error:', error);
         return sendError(res, 'Failed to upload full chapter', 500);
     }
@@ -1138,7 +1150,13 @@ export const submitRevision = async (req: AuthRequest, res: Response) => {
             201
         );
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Submit revision rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Submit revision error:', error);
         return sendError(res, 'Failed to submit revision', 500);
     }
@@ -1243,7 +1261,13 @@ export const deleteBookChapterSubmission = async (req: AuthRequest, res: Respons
         return sendSuccess(res, null, 'Submission withdrawn successfully');
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Delete submission rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Delete submission error:', error);
         return sendError(res, 'Failed to delete submission', 500);
     }
@@ -1419,7 +1443,13 @@ export const reviewProof = async (req: AuthRequest, res: Response) => {
 
         return sendSuccess(res, submission, `Proof ${decision}ed successfully`);
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error('Review proof rollback error:', rollbackError);
+            }
+        }
         console.error('❌ Review proof error:', error);
         return sendError(res, 'Failed to process proof review', 500);
     }
