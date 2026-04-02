@@ -277,6 +277,302 @@ export const BOOK_CHAPTER_TEMPLATES = {
 </html>
 `
     },
+
+    BOOK_CHAPTER_DECISION_ADMIN: {
+        subject: 'Abstract {{decision}}: {{bookTitle}}',
+        variables: ['adminName', 'editorName', 'bookTitle', 'chapters', 'decision', 'submissionId', 'currentYear'],
+        content: `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abstract Decision</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;">
+        <tr>
+            <td align="center">
+
+                <table width="600" cellpadding="0" cellspacing="0"
+                    style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:600px;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="background:linear-gradient(135deg,#1e3a6e,#2563eb);padding:36px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">BR Publications</h1>
+                            <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Editor Decision Notification</p>
+                        </td>
+                    </tr>
+
+                    <!-- Banner -->
+                    <tr>
+                        <td
+                            style="background:#eff6ff;border-bottom:3px solid #2563eb;padding:16px 40px;text-align:center;">
+                            <p style="margin:0;color:#1d4ed8;font-size:15px;font-weight:600;">
+                                📝 Abstract {{decision}} for "{{bookTitle}}"
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:36px 40px;">
+
+                            <p style="margin:0 0 18px;color:#374151;font-size:15px;">
+                                Hello <strong>{{adminName}}</strong>,
+                            </p>
+
+                            <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+                                An editor has made a decision regarding the abstract submission for the book
+                                <strong>{{bookTitle}}</strong>.
+                            </p>
+
+                            <!-- Details Card -->
+                            <table width="100%" cellpadding="0" cellspacing="0"
+                                style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:24px;">
+                                <tr>
+                                    <td style="padding:24px">
+
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Editor
+                                                        Name</span><br />
+                                                    <span
+                                                        style="color:#111827;font-size:15px;font-weight:600;">{{editorName}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Decision</span><br />
+                                                    <span style="color:#111827;font-size:15px;font-weight:600;">{{decision}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Book
+                                                        Title</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{bookTitle}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Chapters</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{chapters}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Submission
+                                                        ID</span><br />
+                                                    <span
+                                                        style="color:#111827;font-size:15px;">#{{submissionId}}</span>
+                                                </td>
+                                            </tr>
+
+                                        </table>
+
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0;color:#6b7280;font-size:14px;">
+                                This update has been recorded in the system. No further action is required from you unless coordination with the editor is needed.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+
+                            <p style="margin:0;color:#9ca3af;font-size:12px;">
+                                This is an automated notification from <strong>BR Publications</strong>.
+                            </p>
+
+                            <p style="margin-top:12px;color:#9ca3af;font-size:12px;">
+                                © {{currentYear}} BR Publications. All rights reserved.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>
+`
+    },
+
+    BOOK_CHAPTER_DECISION_EDITOR: {
+        subject: 'Abstract {{decision}}: {{bookTitle}}',
+        variables: ['editorName', 'adminName', 'bookTitle', 'chapters', 'decision', 'submissionId', 'currentYear'],
+        content: `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Abstract Decision</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;">
+        <tr>
+            <td align="center">
+
+                <table width="600" cellpadding="0" cellspacing="0"
+                    style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:600px;">
+
+                    <!-- Header -->
+                    <tr>
+                        <td
+                            style="background:linear-gradient(135deg,#1e3a6e,#2563eb);padding:36px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">BR Publications</h1>
+                            <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Submission Update Notification</p>
+                        </td>
+                    </tr>
+
+                    <!-- Banner -->
+                    <tr>
+                        <td
+                            style="background:#eff6ff;border-bottom:3px solid #2563eb;padding:16px 40px;text-align:center;">
+                            <p style="margin:0;color:#1d4ed8;font-size:15px;font-weight:600;">
+                                📝 Admin Decision: Abstract {{decision}}
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:36px 40px;">
+
+                            <p style="margin:0 0 18px;color:#374151;font-size:15px;">
+                                Hello <strong>{{editorName}}</strong>,
+                            </p>
+
+                            <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+                                An administrator (<strong>{{adminName}}</strong>) has recorded a decision regarding the abstract submission for 
+                                <strong>{{bookTitle}}</strong>, which is currently assigned to you.
+                            </p>
+
+                            <!-- Details Card -->
+                            <table width="100%" cellpadding="0" cellspacing="0"
+                                style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:24px;">
+                                <tr>
+                                    <td style="padding:24px">
+
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Admin
+                                                        Name</span><br />
+                                                    <span
+                                                        style="color:#111827;font-size:15px;font-weight:600;">{{adminName}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Decision</span><br />
+                                                    <span style="color:#111827;font-size:15px;font-weight:600;">{{decision}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Book
+                                                        Title</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{bookTitle}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Chapters</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{chapters}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Submission
+                                                        ID</span><br />
+                                                    <span
+                                                        style="color:#111827;font-size:15px;">#{{submissionId}}</span>
+                                                </td>
+                                            </tr>
+
+                                        </table>
+
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <p style="margin:0;color:#6b7280;font-size:14px;">
+                                This decision is now active. Please coordinate with the author for the next stages of the manuscript review.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                    <!-- Footer -->
+                    <tr>
+                        <td
+                            style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+
+                            <p style="margin:0;color:#9ca3af;font-size:12px;">
+                                This is an automated notification from <strong>BR Publications</strong>.
+                            </p>
+
+                            <p style="margin-top:12px;color:#9ca3af;font-size:12px;">
+                                © {{currentYear}} BR Publications. All rights reserved.
+                            </p>
+
+                        </td>
+                    </tr>
+
+                </table>
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+
+</html>
+`
+    },
     BOOk_CHAPTER_EDITOR_ASSIGNED: {
         subject: 'Editor Assignment: {{bookTitle}}',
         variables: ['editorName', 'bookTitle', 'assignedBy', 'chapters', 'currentYear'],
@@ -561,7 +857,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     },
     BOOK_CHAPTER_DECISION_APPROVED: {
         subject: '{{stage}} Approved: {{bookTitle}}',
-        variables: ['stage', 'name', 'bookTitle', 'editorNotes', 'frontendUrl', 'currentYear'],
+        variables: ['stage', 'name', 'bookTitle', 'chapterTitle', 'editorNotes', 'frontendUrl', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -638,6 +934,15 @@ export const BOOK_CHAPTER_TEMPLATES = {
                                             <tr>
                                                 <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
                                                     <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Chapter
+                                                        Title</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{chapterTitle}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
                                                         style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Decision</span><br />
                                                     <span style="color:#22c55e;font-size:15px;font-weight:600;">APPROVED</span>
                                                 </td>
@@ -665,7 +970,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
                             <table width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td align="center">
-                                        <a href="{{frontendUrl}}/dashboard"
+                                        <a href="{{frontendUrl}}dashboard/author/submissions"
                                             style="background:#2563eb;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;display:inline-block;">
                                             Go to Dashboard
                                         </a>
@@ -704,8 +1009,8 @@ export const BOOK_CHAPTER_TEMPLATES = {
 `
     },
     BOOK_CHAPTER_DECISION_REJECTED: {
-        subject: '{{stage}} Decision: {{bookTitle}}',
-        variables: ['stage', 'name', 'bookTitle', 'editorNotes', 'currentYear'],
+        subject: '{{stage}} Rejected: {{bookTitle}}',
+        variables: ['stage', 'name', 'bookTitle', 'chapterTitle', 'editorNotes', 'currentYear'],
         content: `
 <!DOCTYPE html>
 <html lang="en">
@@ -713,7 +1018,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{stage}} Decision</title>
+    <title>{{stage}} Rejected</title>
 </head>
 
 <body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
@@ -739,7 +1044,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
                         <td
                             style="background:#fef2f2;border-bottom:3px solid #ef4444;padding:16px 40px;text-align:center;">
                             <p style="margin:0;color:#b91c1c;font-size:15px;font-weight:600;">
-                                Decision update on your {{stage}}
+                                Update on your {{stage}}
                             </p>
                         </td>
                     </tr>
@@ -777,6 +1082,15 @@ export const BOOK_CHAPTER_TEMPLATES = {
                                                         style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Book
                                                         Title</span><br />
                                                     <span style="color:#111827;font-size:15px;">{{bookTitle}}</span>
+                                                </td>
+                                            </tr>
+
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span
+                                                        style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Chapter
+                                                        Title</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{chapterTitle}}</span>
                                                 </td>
                                             </tr>
 
@@ -1755,5 +2069,257 @@ export const BOOK_CHAPTER_TEMPLATES = {
         description: 'App notification for Admin/Editor when delivery details are submitted.',
         variables: ['authorName', 'bookTitle'],
         content: 'Author {{authorName}} has submitted the delivery details for the book "{{bookTitle}}".'
+    },
+    BOOK_CHAPTER_PROOF_SENT: {
+        subject: 'Proof Document Ready for Review: {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'frontendUrl', 'currentYear'],
+        content: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proof Document Ready</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:600px;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background:linear-gradient(135deg,#3b82f6,#2563eb);padding:36px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">BR Publications</h1>
+                            <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Submission Update: Proof Document</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Banner -->
+                    <tr>
+                        <td style="background:#eff6ff;border-bottom:3px solid #3b82f6;padding:16px 40px;text-align:center;">
+                            <p style="margin:0;color:#1d4ed8;font-size:15px;font-weight:600;">
+                                📄 A Proof Document is Ready for Your Review
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:40px;">
+                            <h2 style="margin:0 0 16px;color:#111827;font-size:18px;font-weight:700;">Hello {{name}},</h2>
+                            <p style="margin:0 0 20px;color:#4b5563;font-size:15px;line-height:1.6;">
+                                The editor has uploaded a proof document for your book chapter submission <strong>{{bookTitle}}</strong>. Please review it carefully.
+                            </p>
+
+                            <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.6;">
+                                You must accept the proof, or request changes by rejecting it and providing your notes.
+                            </p>
+                            
+                            <!-- Actions -->
+                            <div style="text-align:center;margin:30px 0;">
+                                <a href="{{frontendUrl}}dashboard/author/submissions" style="display:inline-block;padding:14px 28px;background:#2563eb;color:#ffffff;text-decoration:none;border-radius:6px;font-weight:600;font-size:15px;box-shadow:0 2px 4px rgba(37,99,235,0.2);">Go to Dashboard</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+                            <p style="margin:0;color:#9ca3af;font-size:12px;">This is an automated notification from <strong>BR Publications</strong>.</p>
+                            <p style="margin-top:12px;color:#9ca3af;font-size:12px;">© {{currentYear}} BR Publications. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`
+    },
+    BOOK_CHAPTER_PROOF_REVIEWED: {
+        subject: 'Author Proof Review ({{decision}}): {{bookTitle}}',
+        variables: ['name', 'bookTitle', 'decision', 'authorProofNotes', 'currentYear'],
+        content: `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Proof Document Reviewed</title>
+</head>
+
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:600px;">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background:linear-gradient(135deg,#6366f1,#4f46e5);padding:36px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">BR Publications</h1>
+                            <p style="margin:8px 0 0;color:#e0e7ff;font-size:14px;">Author Proof Review Update</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Banner -->
+                    <tr>
+                        <td style="background:#eef2ff;border-bottom:3px solid #6366f1;padding:16px 40px;text-align:center;">
+                            <p style="margin:0;color:#4338ca;font-size:15px;font-weight:600;">
+                                The Author has {{decision}} the Proof Document
+                            </p>
+                        </td>
+                    </tr>
+
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:40px;">
+                            <h2 style="margin:0 0 16px;color:#111827;font-size:18px;font-weight:700;">Hello {{name}},</h2>
+                            <p style="margin:0 0 20px;color:#4b5563;font-size:15px;line-height:1.6;">
+                                The author has reviewed the proof document for <strong>{{bookTitle}}</strong> and has <strong>{{decision}}</strong> it.
+                            </p>
+                            
+                            <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:24px;">
+                                <tr>
+                                    <td style="padding:20px;">
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="padding-bottom:12px;border-bottom:1px solid #e2e8f0;">
+                                                    <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Book Title</span><br />
+                                                    <span style="color:#111827;font-size:15px;font-weight:600;">{{bookTitle}}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:12px 0;">
+                                                    <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Author's Notes</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{authorProofNotes}}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+
+                                </p>
+                            </td>
+                        </tr>
+                        
+                        <!-- Footer -->
+                        <tr>
+                            <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+                                <p style="margin:0;color:#9ca3af;font-size:12px;">This is an automated notification from <strong>BR Publications</strong>.</p>
+                                <p style="margin-top:12px;color:#9ca3af;font-size:12px;">© {{currentYear}} BR Publications. All rights reserved.</p>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </body>
+    </html>
+    `
+        },
+    BOOK_CHAPTER_DOI_UPDATED: {
+        subject: 'Important Update: DOI Assigned to {{bookTitle}}',
+        variables: ['authorName', 'bookTitle', 'doi', 'isbn', 'link', 'currentYear'],
+        description: 'Sent to respective authors when a DOI is assigned to a published book chapter.',
+        content: `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DOI Assigned</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:'Segoe UI',Arial,sans-serif;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:40px 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0"
+                    style="background:#ffffff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.08);max-width:600px;">
+                    
+                    <!-- Header -->
+                    <tr>
+                        <td style="background:linear-gradient(135deg,#1e3a6e,#2563eb);padding:36px 40px;text-align:center;">
+                            <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:700;">BR Publications</h1>
+                            <p style="margin:8px 0 0;color:#bfdbfe;font-size:14px;">Publication Update Activity</p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Banner -->
+                    <tr>
+                        <td style="background:#eff6ff;border-bottom:3px solid #2563eb;padding:16px 40px;text-align:center;">
+                            <p style="margin:0;color:#1d4ed8;font-size:15px;font-weight:600;">
+                                🔗 DOI Has Been Assigned to Your Publication
+                            </p>
+                        </td>
+                    </tr>
+                    
+                    <!-- Body -->
+                    <tr>
+                        <td style="padding:36px 40px;">
+                            <p style="margin:0 0 18px;color:#374151;font-size:15px;">
+                                Hello <strong>{{authorName}}</strong>,
+                            </p>
+                            
+                            <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+                                We are writing to inform you that a Digital Object Identifier (DOI) has been successfully assigned to your published book chapter in <strong>{{bookTitle}}</strong>.
+                            </p>
+                            
+                            <!-- Details Card -->
+                            <table width="100%" cellpadding="0" cellspacing="0"
+                                style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:24px;">
+                                <tr>
+                                    <td style="padding:24px">
+                                        <table width="100%" cellpadding="0" cellspacing="0">
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">Book Title</span><br />
+                                                    <span style="color:#111827;font-size:15px;font-weight:600;">{{bookTitle}}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+                                                    <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">DOI</span><br />
+                                                    <span style="color:#111827;font-size:15px;font-weight:600;">{{doi}}</span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td style="padding:10px 0;">
+                                                    <span style="color:#6b7280;font-size:12px;font-weight:600;text-transform:uppercase;">ISBN</span><br />
+                                                    <span style="color:#111827;font-size:15px;">{{isbn}}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            
+                            <p style="margin:0 0 24px;color:#4b5563;font-size:15px;line-height:1.6;">
+                                Having a DOI ensures that your work is permanently discoverable and citable. We encourage you to use this DOI when sharing your work or referencing it in your CV.
+                            </p>
+                            
+                            <!-- Action Button -->
+                            <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+                                <a href="{{link}}" style="background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 6px; font-weight: 600; display: inline-block;">View Publication Details</a>
+                            </div>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:20px 40px;text-align:center;">
+                            <p style="margin:0;color:#9ca3af;font-size:12px;">This is an automated notification from <strong>BR Publications</strong>.</p>
+                            <p style="margin-top:12px;color:#9ca3af;font-size:12px;">© {{currentYear}} BR Publications. All rights reserved.</p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+`
     }
 };

@@ -1555,7 +1555,7 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
         }
 
         // Email (always send to the email from the form)
-        if (authorEmail) {
+        if (authorEmail && authorEmail.trim() !== '' && authorEmail.toLowerCase() !== 'n/a' && authorEmail.toLowerCase() !== 'not available') {
             sendTextBookPublishedEmail(
                 authorEmail,
                 authorName,

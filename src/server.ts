@@ -173,6 +173,11 @@ const startServer = async () => {
     const ContactInquiry = (await import('./models/contactInquiry')).default;
     const TemporaryUpload = (await import('./models/temporaryUpload')).default;
 
+    // Relational publishing models
+    const PublishedAuthor = (await import('./models/publishedAuthor')).default;
+    const PublishedIndividualChapter = (await import('./models/publishedIndividualChapter')).default;
+    const PublishedFile = (await import('./models/publishedFile')).default;
+
     // Custom role models
     const { Role, Permission, RolePermission, UserCustomRole } = await import('./models/customRole');
 
@@ -223,6 +228,9 @@ const startServer = async () => {
       Conference: Conference,
       ConferenceArticle: ConferenceArticle,
       TemporaryUpload: TemporaryUpload,
+      PublishedAuthor,
+      PublishedIndividualChapter,
+      PublishedFile,
     };
 
     // 2. Initialize each model (handle both 'initialize' and 'initModel' methods)
@@ -279,10 +287,16 @@ const startServer = async () => {
       const { fixEnum } = await import('./scripts/fix_enum');
       const { fixEnums } = await import('./scripts/hotfix_all_enums');
       const { fixTable } = await import('./scripts/hotfix_book_chapter_files');
-      
+      const { fixPublishedChaptersTable } = await import('./scripts/hotfix_published_book_chapters');
+      const { fixPublishedFiles } = await import('./scripts/hotfix_published_files');
+      const { migratePublishedDetails } = await import('./scripts/migratePublishedDetails');
+
       await fixEnum(sequelize);
       await fixEnums(sequelize);
       await fixTable(sequelize);
+      await fixPublishedChaptersTable(sequelize);
+      await fixPublishedFiles(sequelize);
+      await migratePublishedDetails(sequelize);
       console.log('✅ Automated DB hotfixes completed successfully.');
     } catch (hotfixErr) {
       console.error('❌ Automated DB hotfixes failed:', hotfixErr);

@@ -33,6 +33,8 @@ import {
   sendBookChapterDeadlineReminderEmail,
   sendBookChapterCommentEmail,
   sendBookChapterPublishedEmail,
+  sendIndividualChapterPublishedEmail,
+  sendIndividualChapterDoiUpdatedEmail,
   sendBookChapterPeerReviewCompletedEditorEmail,
 } from './emails/bookChapterEmails';
 import {
@@ -75,6 +77,8 @@ export {
   sendBookChapterDeadlineReminderEmail,
   sendBookChapterCommentEmail,
   sendBookChapterPublishedEmail,
+  sendIndividualChapterPublishedEmail,
+  sendIndividualChapterDoiUpdatedEmail,
   sendBookChapterPeerReviewCompletedEditorEmail,
 } from './emails/bookChapterEmails';
 export {
@@ -167,6 +171,8 @@ export default {
   sendManualEmailToUser,
   // New typed names
   sendBookChapterPublishedEmail,
+  sendIndividualChapterPublishedEmail,
+  sendIndividualChapterDoiUpdatedEmail,
   sendBookChapterPeerReviewCompletedEditorEmail,
   sendBookChapterRevisionRequestedEmail,
   sendTextBookRevisionRequestedEmail,

@@ -25,6 +25,8 @@ export interface TocChapter {
 
 export interface AuthorBiography {
     authorName: string;
+    affiliation: string;
+    email?: string;
     biography: string;
 }
 
@@ -42,6 +44,7 @@ export interface PublishedBookChapterAttributes {
     // Book metadata
     title: string;
     editors: string[] | null;
+    primaryEditor: string | null;
     category: string;
     description: string; // abstract / short description
     isbn: string;
@@ -94,6 +97,7 @@ class PublishedBookChapter
     public coAuthorsData!: any[] | null;
     public title!: string;
     public editors!: string[] | null;
+    public primaryEditor!: string | null;
     public category!: string;
     public description!: string;
     public isbn!: string;
@@ -141,7 +145,7 @@ class PublishedBookChapter
                 },
                 author: {
                     type: DataTypes.STRING(500),
-                    allowNull: false,
+                    allowNull: true,
                 },
                 mainAuthor: {
                     type: DataTypes.JSONB,
@@ -161,6 +165,10 @@ class PublishedBookChapter
                 },
                 editors: {
                     type: DataTypes.JSONB,
+                    allowNull: true,
+                },
+                primaryEditor: {
+                    type: DataTypes.STRING(200),
                     allowNull: true,
                 },
                 category: {
@@ -284,6 +292,12 @@ class PublishedBookChapter
             PublishedBookChapter.belongsTo(models.BookChapterSubmission, {
                 foreignKey: 'bookChapterSubmissionId',
                 as: 'submission',
+            });
+        }
+        if (models.PublishedIndividualChapter) {
+            PublishedBookChapter.hasMany(models.PublishedIndividualChapter, {
+                foreignKey: 'publishedBookChapterId',
+                as: 'chapters',
             });
         }
     }

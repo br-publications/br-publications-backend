@@ -10,6 +10,7 @@ export enum BookChapterFileType {
   REVISION_2 = 'revision_2',
   REVISION_3 = 'revision_3',
   FINAL_APPROVED = 'final_approved',
+  PROOF_DOCUMENT = 'proof_document',
 }
 
 interface BookChapterFileAttributes {
@@ -98,6 +99,7 @@ class BookChapterFile extends Model<
       [BookChapterFileType.REVISION_2]: 'Revision 2',
       [BookChapterFileType.REVISION_3]: 'Revision 3',
       [BookChapterFileType.FINAL_APPROVED]: 'Final Approved Version',
+      [BookChapterFileType.PROOF_DOCUMENT]: 'Proof Document',
     };
     return typeNames[this.fileType] || this.fileType;
   }

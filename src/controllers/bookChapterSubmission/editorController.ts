@@ -6,7 +6,7 @@ import User, { UserRole } from '../../models/user';
 import { AuthRequest } from '../../middleware/auth';
 import { sendError, sendSuccess } from '../../utils/responseHandler';
 import { sendDummyEmail } from '../../utils/emailService';
-import { notifyAuthorsProofEditing, sendDecisionEmailToAuthors, sendBookChapterDecisionEmail, sendBookChapterReviewerAssignedEmail, notifyAuthorsDeliveryDetailsRequested } from '../../utils/emails/bookChapterEmails';
+import { notifyAuthorsProofEditing, notifyAuthorsProofSent, sendDecisionEmailToAuthors, sendBookChapterDecisionEmail, sendBookChapterDeadlineReminderEmail, sendBookChapterCommentEmail, sendBookChapterDecisionAdminEmail, sendBookChapterDecisionEditorEmail, sendBookChapterReviewerAssignedEmail, notifyAuthorsDeliveryDetailsRequested } from '../../utils/emails/bookChapterEmails';
 import notificationService from '../../services/notificationService';
 import { NotificationType, NotificationCategory } from '../../models/notification';
 import BookChapterReviewerAssignment, { ReviewerAssignmentStatus } from '../../models/bookChapterReviewerAssignment';
@@ -29,8 +29,8 @@ export const getEditorSubmissions = async (req: AuthRequest, res: Response) => {
     try {
         const user = req.authenticatedUser;
 
-        if (!user || !user.hasRole(UserRole.EDITOR)) {
-            return sendError(res, 'Editor access required', 403);
+        if (!user || (!user.hasRole(UserRole.EDITOR) && !user.isAdminOrDeveloper())) {
+            return sendError(res, 'Editor or Admin access required', 403);
         }
 
         const status = req.query.status as BookChapterStatus | undefined;
@@ -163,9 +163,9 @@ export const editorDecision = async (req: AuthRequest, res: Response) => {
         const submissionId = parseInt(req.params.id);
         const { decision, notes } = req.body; // 'accept' | 'reject'
 
-        if (!user || !user.hasRole(UserRole.EDITOR)) {
+        if (!user || (!user.hasRole(UserRole.EDITOR) && !user.isAdminOrDeveloper())) {
             await transaction.rollback();
-            return sendError(res, 'Editor access required', 403);
+            return sendError(res, 'Editor or Admin access required', 403);
         }
 
         if (isNaN(submissionId) || !decision) {
@@ -185,8 +185,8 @@ export const editorDecision = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Submission not found', 404);
         }
 
-        // Verify user is the assigned editor
-        if (submission.assignedEditorId !== user.id) {
+        // Verify user is the assigned editor, unless it's an admin or developer
+        if (submission.assignedEditorId !== user.id && !user.isAdminOrDeveloper()) {
             await transaction.rollback();
             return sendError(res, 'You are not the assigned editor', 403);
         }
@@ -337,17 +337,13 @@ export const editorDecision = async (req: AuthRequest, res: Response) => {
                     relatedEntityType: 'BookChapterSubmission'
                 }).catch(console.error);
 
-                sendDummyEmail({
-                    to: admin.email,
-                    subject: `Abstract ${decision === 'accept' ? 'Accepted' : 'Rejected'}`,
-                    template: `abstract-${decision}-admin`,
-                    data: {
-                        adminName: admin.fullName,
-                        editorName: user.fullName,
-                        bookTitle: displayBookTitle,
-                        chapters: resolvedChapterTitles,
-                        submissionId: submission.id
-                    }
+                // Notify Admins about the decision with professional template
+                sendBookChapterDecisionAdminEmail(admin.email, admin.fullName, {
+                    editorName: user.fullName,
+                    bookTitle: displayBookTitle,
+                    chapters: resolvedChapterTitles,
+                    decision: decision === 'accept' ? 'Accepted' : 'Rejected',
+                    submissionId: submission.id
                 }).catch(console.error);
             });
         }).catch(console.error);
@@ -367,17 +363,13 @@ export const editorDecision = async (req: AuthRequest, res: Response) => {
                     relatedEntityType: 'BookChapterSubmission'
                 }).catch(console.error);
 
-                sendDummyEmail({
-                    to: editor.email,
-                    subject: `Abstract ${decision === 'accept' ? 'Accepted' : 'Rejected'}`,
-                    template: `abstract-${decision}-editor`,
-                    data: {
-                        editorName: editor.fullName,
-                        adminName: user.fullName,
-                        bookTitle: displayBookTitle,
-                        chapters: resolvedChapterTitles,
-                        submissionId: submission.id
-                    }
+                // Notify Editor about the decision with professional template
+                sendBookChapterDecisionEditorEmail(editor.email, editor.fullName, {
+                    adminName: user.fullName,
+                    bookTitle: displayBookTitle,
+                    chapters: resolvedChapterTitles,
+                    decision: decision === 'accept' ? 'Accepted' : 'Rejected',
+                    submissionId: submission.id
                 }).catch(console.error);
             }).catch(console.error);
         }
@@ -409,9 +401,9 @@ export const assignReviewers = async (req: AuthRequest, res: Response) => {
     try {
         const user = req.authenticatedUser;
 
-        if (!user || !user.hasRole(UserRole.EDITOR)) {
+        if (!user || (!user.hasRole(UserRole.EDITOR) && !user.isAdminOrDeveloper())) {
             await transaction.rollback();
-            return sendError(res, 'Editor access required', 403);
+            return sendError(res, 'Editor or Admin access required', 403);
         }
 
         const submissionId = parseInt(req.params.id);
@@ -435,7 +427,7 @@ export const assignReviewers = async (req: AuthRequest, res: Response) => {
         }
 
         // Verify user is the assigned editor
-        if (submission.assignedEditorId !== user.id) {
+        if (submission.assignedEditorId !== user.id && !user.isAdminOrDeveloper()) {
             await transaction.rollback();
             return sendError(res, 'You are not the assigned editor', 403);
         }
@@ -642,9 +634,9 @@ export const reassignReviewer = async (req: AuthRequest, res: Response) => {
     try {
         const user = req.authenticatedUser;
 
-        if (!user || !user.hasRole(UserRole.EDITOR)) {
+        if (!user || (!user.hasRole(UserRole.EDITOR) && !user.isAdminOrDeveloper())) {
             await transaction.rollback();
-            return sendError(res, 'Editor access required', 403);
+            return sendError(res, 'Editor or Admin access required', 403);
         }
 
         const assignmentId = parseInt(req.params.assignmentId);
@@ -677,7 +669,7 @@ export const reassignReviewer = async (req: AuthRequest, res: Response) => {
         }
 
         // Verify user is the assigned editor
-        if (submission.assignedEditorId !== user.id) {
+        if (submission.assignedEditorId !== user.id && !user.isAdminOrDeveloper()) {
             await transaction.rollback();
             return sendError(res, 'You are not the assigned editor', 403);
         }
@@ -1150,7 +1142,7 @@ export const finalDecision = async (req: AuthRequest, res: Response) => {
         // Unique recipients for Author and Submitter
         const recipients = new Map<string, { id: number, name: string, email: string }>();
         const mainAuthorParsed = typeof submission.mainAuthor === 'string' ? JSON.parse(submission.mainAuthor as any) : submission.mainAuthor;
-        
+
         if (mainAuthorParsed && mainAuthorParsed.email) {
             recipients.set(mainAuthorParsed.email.toLowerCase(), {
                 id: submission.submittedBy,
@@ -1158,7 +1150,7 @@ export const finalDecision = async (req: AuthRequest, res: Response) => {
                 email: mainAuthorParsed.email
             });
         }
-        
+
         const submitter = await User.findByPk(submission.submittedBy);
         if (submitter && submitter.email) {
             recipients.set(submitter.email.toLowerCase(), {
@@ -1451,7 +1443,7 @@ export const applyIsbn = async (req: AuthRequest, res: Response) => {
         // Step 9 Fix: Notify Admin & Authors
         const displayBookTitle = await resolveDisplayBookTitle(submission.bookTitle) || submission.bookTitle;
         const submitter = await User.findByPk(submission.submittedBy);
-        
+
         // Notify Admins (In-app)
         User.findAll({ where: { role: UserRole.ADMIN, isActive: true } }).then(admins => {
             admins.forEach(admin => {
@@ -1536,6 +1528,38 @@ export const receiveIsbn = async (req: AuthRequest, res: Response) => {
         submission.lastUpdatedBy = user.id;
         await submission.save({ transaction });
 
+        // Update associated BookChapters as Ready for Publication
+        try {
+            const { default: BookTitle } = await import('../../models/bookTitle');
+            const { default: BookChapter } = await import('../../models/bookChapter');
+            const { Op } = await import('sequelize');
+
+            // Find the bookTitleId for the bookTitle string
+            const bookTitleRecord = await BookTitle.findOne({
+                where: { title: submission.bookTitle },
+                transaction
+            });
+
+            if (bookTitleRecord) {
+                const chapterTitles = submission.bookChapterTitles;
+                if (chapterTitles && chapterTitles.length > 0) {
+                    await BookChapter.update(
+                        { isReadyForPublication: true },
+                        {
+                            where: {
+                                bookTitleId: bookTitleRecord.id,
+                                chapterTitle: { [Op.in]: chapterTitles }
+                            },
+                            transaction
+                        }
+                    );
+                    console.log(`✅ Marked ${chapterTitles.length} chapters as Ready for Publication for "${submission.bookTitle}"`);
+                }
+            }
+        } catch (updateErr) {
+            console.error('❌ Error updating BookChapters isReadyForPublication flag:', updateErr);
+        }
+
         await BookChapterStatusHistory.create({
             submissionId: submission.id,
             previousStatus,
@@ -1595,9 +1619,9 @@ export const chapterEditorialDecision = async (req: AuthRequest, res: Response) 
         const chapterId = parseInt(req.params.chapterId);
         const { decision, notes } = req.body; // 'approve' | 'reject'
 
-        if (!user || !user.hasRole(UserRole.EDITOR)) {
+        if (!user || (!user.hasRole(UserRole.EDITOR) && !user.isAdminOrDeveloper())) {
             await transaction.rollback();
-            return sendError(res, 'Editor access required', 403);
+            return sendError(res, 'Editor or Admin access required', 403);
         }
 
         if (!decision || !['approve', 'reject'].includes(decision)) {
@@ -1618,7 +1642,7 @@ export const chapterEditorialDecision = async (req: AuthRequest, res: Response) 
         const submission = chapter.submission;
 
         // Verify authorization
-        if (submission.assignedEditorId !== user.id) {
+        if (submission.assignedEditorId !== user.id && !user.isAdminOrDeveloper()) {
             await transaction.rollback();
             return sendError(res, 'You are not the assigned editor for this submission', 403);
         }
@@ -1750,6 +1774,104 @@ export const chapterEditorialDecision = async (req: AuthRequest, res: Response) 
         await transaction.rollback();
         console.error('❌ Chapter editorial decision error:', error);
         return sendError(res, 'Failed to process chapter editorial decision', 500);
+    }
+};
+
+/**
+ * @route POST /api/book-chapters/:id/submit-proof
+ * @desc Editor uploads proof document for author confirmation
+ * @access Private (Editor/Admin)
+ */
+export const submitProof = async (req: AuthRequest, res: Response) => {
+    const sequelize = BookChapterSubmission.sequelize;
+    if (!sequelize) return sendError(res, 'Database connection not initialized', 500);
+
+    const transaction = await sequelize.transaction();
+    try {
+        const user = req.authenticatedUser;
+        const submissionId = parseInt(req.params.id);
+        const proofFile = req.file;
+
+        if (!user || (!user.hasRole(UserRole.EDITOR) && !user.hasRole(UserRole.ADMIN))) {
+            await transaction.rollback();
+            return sendError(res, 'Editor or Admin access required', 403);
+        }
+
+        if (!proofFile) {
+            await transaction.rollback();
+            return sendError(res, 'No proof file uploaded', 400);
+        }
+
+        const submission = await BookChapterSubmission.findByPk(submissionId, { transaction });
+        if (!submission) {
+            await transaction.rollback();
+            return sendError(res, 'Submission not found', 404);
+        }
+
+        // Verify authorization
+        const isAssignedEditor = submission.assignedEditorId === user.id;
+        const isAdminOrDev = user.hasRole(UserRole.ADMIN) || user.hasRole(UserRole.DEVELOPER);
+
+        if (!isAssignedEditor && !isAdminOrDev) {
+            await transaction.rollback();
+            return sendError(res, 'You are not authorized to send proof for this submission', 403);
+        }
+
+        // Save file
+        const fileRecord = await BookChapterFile.create({
+            submissionId: submission.id,
+            uploadedBy: user.id,
+            fileName: proofFile.originalname,
+            fileData: proofFile.buffer,
+            fileType: BookChapterFileType.PROOF_DOCUMENT,
+            fileSize: proofFile.size,
+            mimeType: proofFile.mimetype,
+            isActive: true,
+        }, { transaction });
+
+        // Update submission
+        submission.proofStatus = 'SENT';
+        submission.lastUpdatedBy = user.id;
+        await submission.save({ transaction });
+
+        await BookChapterStatusHistory.create({
+            submissionId: submission.id,
+            previousStatus: submission.status,
+            newStatus: submission.status,
+            changedBy: user.id,
+            action: 'Proof Sent',
+            notes: `Proof document "${proofFile.originalname}" sent to author for confirmation.`,
+            metadata: { fileId: fileRecord.id },
+        }, { transaction });
+
+        await transaction.commit();
+
+        // Notify author
+        const displayBookTitle = await resolveDisplayBookTitle(submission.bookTitle);
+        notificationService.createNotification({
+            recipientId: submission.submittedBy,
+            senderId: user.id,
+            type: NotificationType.INFO,
+            category: NotificationCategory.SUBMISSION,
+            title: 'Proof for Review',
+            message: `The editor has sent the proof for "${displayBookTitle}" for your review. Please confirm or request changes.`,
+            relatedEntityId: submission.id,
+            relatedEntityType: 'BookChapterSubmission',
+        }).catch(console.error);
+
+        // Send email notification to authors
+        try {
+            const submitterForEmail = await User.findByPk(submission.submittedBy);
+            await notifyAuthorsProofSent(submission, submitterForEmail, { bookTitle: displayBookTitle });
+        } catch (emailError) {
+            console.error('❌ Error sending proof sent email:', emailError);
+        }
+
+        return sendSuccess(res, { submission, file: fileRecord }, 'Proof sent to author successfully');
+    } catch (error) {
+        await transaction.rollback();
+        console.error('❌ Submit proof error:', error);
+        return sendError(res, 'Failed to submit proof', 500);
     }
 };
 

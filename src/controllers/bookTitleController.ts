@@ -504,3 +504,69 @@ export const getBookTitleWithChapters = async (req: Request, res: Response) => {
         });
     }
 };
+
+/**
+ * @swagger
+ * /api/book-titles/by-title:
+ *   get:
+ *     summary: Get book title by exact title string
+ *     tags: [Book Titles]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: title
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Book title details
+ *       404:
+ *         description: Book title not found
+ */
+export const getBookTitleByExactTitle = async (req: Request, res: Response) => {
+    try {
+        const { title } = req.query;
+
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                message: 'Title query parameter is required',
+            });
+        }
+
+        const bookTitle = await BookTitle.findOne({
+            where: { title: String(title).trim() },
+            include: [
+                {
+                    model: BookChapter,
+                    as: 'chapters',
+                    where: { isActive: true },
+                    required: false,
+                    order: [['chapterNumber', 'ASC']],
+                },
+            ],
+        });
+
+        if (!bookTitle) {
+            return res.status(404).json({
+                success: false,
+                message: 'Book title not found',
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Book title retrieved successfully',
+            data: bookTitle,
+        });
+    } catch (error: any) {
+        console.error('Error fetching book title by exact title:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to fetch book title',
+            error: error.message,
+        });
+    }
+};

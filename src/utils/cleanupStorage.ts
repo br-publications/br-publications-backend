@@ -27,7 +27,7 @@ export const cleanupStorage = async () => {
         if (fs.existsSync(TEMP_UPLOAD_DIR)) {
             const files = fs.readdirSync(TEMP_UPLOAD_DIR);
             const now = Date.now();
-            const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+            const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 
             let deletedFilesCount = 0;
 
@@ -37,8 +37,8 @@ export const cleanupStorage = async () => {
                     const stats = fs.statSync(filePath);
                     const age = now - stats.mtime.getTime();
 
-                    // Delete files older than 24 hours
-                    if (age > ONE_DAY_MS && stats.isFile()) {
+                    // Delete files older than 5 days
+                    if (age > FIVE_DAYS_MS && stats.isFile()) {
                         fs.unlinkSync(filePath);
                         deletedFilesCount++;
                     }
