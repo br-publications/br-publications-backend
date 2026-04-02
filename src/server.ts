@@ -113,7 +113,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
  *       200:
  *         description: Server is running
  */
-app.get('/health', (req: Request, res: Response) => {
+app.get(['/health', '/api/health'], (req: Request, res: Response) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
@@ -130,7 +130,7 @@ app.get('/health', (req: Request, res: Response) => {
  *       500:
  *         description: Database connection failed
  */
-app.get('/health/db', async (req: Request, res: Response) => {
+app.get(['/health/db', '/api/health/db'], async (req: Request, res: Response) => {
   try {
     await sequelize.authenticate();
     res.json({
