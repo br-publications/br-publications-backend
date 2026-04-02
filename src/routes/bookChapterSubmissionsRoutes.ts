@@ -152,6 +152,9 @@ router.put('/:id', authenticate, controller.updateSubmission);
  */
 router.get('/my-submissions', authenticate, controller.getMySubmissions);
 
+// ★ Get all submissions for a given book title (Admin/Editor) — used during publication
+router.get('/by-book-title', authenticate, hasRole(UserRole.ADMIN, UserRole.EDITOR), controller.getSubmissionsByBookTitle);
+
 /**
  * @swagger
  * /api/book-chapters/{id}:
@@ -294,6 +297,7 @@ router.post('/chapters/:chapterId/upload-manuscript', authenticate, upload.singl
  *         description: Revision submitted successfully
  */
 router.post('/:id/submit-revision', authenticate, upload.single('revision'), controller.submitRevision);
+router.post('/:id/review-proof', authenticate, controller.reviewProof);
 
 /**
  * @swagger
@@ -498,7 +502,7 @@ router.post('/:id/editor-decision', authenticate, hasRole(UserRole.EDITOR, UserR
  *       200:
  *         description: Abstract accepted successfully
  */
-router.post('/:submissionId/accept-abstract', authenticate, hasRole(UserRole.EDITOR), controller.acceptAbstract);
+router.post('/:submissionId/accept-abstract', authenticate, hasRole(UserRole.EDITOR, UserRole.ADMIN), controller.acceptAbstract);
 
 
 /**
@@ -529,7 +533,7 @@ router.post('/:submissionId/accept-abstract', authenticate, hasRole(UserRole.EDI
  *       200:
  *         description: Reviewers assigned successfully
  */
-router.post('/:id/assign-reviewers', authenticate, hasRole(UserRole.EDITOR), controller.assignReviewers);
+router.post('/:id/assign-reviewers', authenticate, hasRole(UserRole.EDITOR, UserRole.ADMIN), controller.assignReviewers);
 
 /**
  * @swagger
@@ -607,7 +611,7 @@ router.get('/:id/reviewers', authenticate, hasRole(UserRole.EDITOR, UserRole.ADM
  *       200:
  *         description: Reviewer reassigned
  */
-router.post('/assignments/:assignmentId/reassign', authenticate, hasRole(UserRole.EDITOR), controller.reassignReviewer);
+router.post('/assignments/:assignmentId/reassign', authenticate, hasRole(UserRole.EDITOR, UserRole.ADMIN), controller.reassignReviewer);
 
 /**
  * @swagger
@@ -664,6 +668,7 @@ router.post('/:id/apply-isbn', authenticate, hasRole(UserRole.EDITOR, UserRole.A
  *         description: ISBN recorded, publication in progress
  */
 router.post('/:id/receive-isbn', authenticate, hasRole(UserRole.EDITOR, UserRole.ADMIN), controller.receiveIsbn);
+router.post('/:id/submit-proof', authenticate, hasRole(UserRole.EDITOR, UserRole.ADMIN), upload.single('proof'), controller.submitProof);
 
 /**
  * @swagger
@@ -826,6 +831,7 @@ router.post('/assignments/:assignmentId/complete', authenticate, hasRole(UserRol
  *         description: File not found
  */
 router.get('/files/:id', authenticate, controller.downloadFile);
+router.get('/files/:id/download', authenticate, controller.downloadFile);
 
 /**
  * @swagger
@@ -845,6 +851,25 @@ router.get('/files/:id', authenticate, controller.downloadFile);
  *         description: Review started successfully
  */
 router.post('/assignments/:assignmentId/start', authenticate, hasRole(UserRole.REVIEWER), controller.startReview);
+
+/**
+ * @swagger
+ * /api/book-chapters/{id}/files:
+ *   get:
+ *     summary: Get all active files for a submission
+ *     tags: [Book Chapters]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Files retrieved successfully
+ */
+router.get('/:id/files', authenticate, controller.getSubmissionFiles);
 
 /**
  * @swagger

@@ -471,6 +471,79 @@ export const getSubmissionHistory = async (req: AuthRequest, res: Response) => {
 };
 
 /**
+ * @route GET /api/book-chapters/:id/files
+ * @desc Get all active files for a submission
+ * @access Private (Author - own, Editor - assigned, Admin - all, Reviewer - assigned)
+ */
+export const getSubmissionFiles = async (req: AuthRequest, res: Response) => {
+    try {
+        const user = req.authenticatedUser;
+        if (!user) {
+            return sendError(res, 'User not authenticated', 401);
+        }
+
+        const submissionId = parseInt(req.params.id);
+        if (isNaN(submissionId)) {
+            return sendError(res, 'Invalid submission ID', 400);
+        }
+
+        const submission = await BookChapterSubmission.findByPk(submissionId);
+        if (!submission) {
+            return sendError(res, 'Submission not found', 404);
+        }
+
+        // Permission checks
+        const isOwner = submission.submittedBy === user.id;
+        const isAssignedEditor = submission.assignedEditorId === user.id;
+        const isAdmin = user.hasRole(UserRole.ADMIN) || user.hasRole(UserRole.DEVELOPER);
+
+        // Check if user is assigned reviewer (Chapter Level)
+        let isChapterReviewer = false;
+        try {
+            const ChapterReviewerAssignmentModel = (await import('../../models/chapterReviewerAssignment')).default;
+            const chapterAssignment = await ChapterReviewerAssignmentModel.findOne({
+                where: { reviewerId: user.id },
+                include: [{
+                    model: IndividualChapter,
+                    as: 'chapter',
+                    where: {
+                        submissionId: submissionId
+                    },
+                    required: true
+                }]
+            });
+            isChapterReviewer = !!chapterAssignment;
+        } catch (e) { /* ignore */ }
+
+        if (!isOwner && !isAssignedEditor && !isAdmin && !isChapterReviewer) {
+            return sendError(res, 'You do not have permission to view these files', 403);
+        }
+
+        const files = await BookChapterFile.findAll({
+            where: {
+                submissionId,
+                isActive: true
+            },
+            include: [
+                {
+                    model: User,
+                    as: 'uploader',
+                    attributes: ['id', 'fullName'],
+                }
+            ],
+            // Exclude huge binary data from the listing
+            attributes: { exclude: ['fileData'] },
+            order: [['uploadDate', 'ASC']]
+        });
+
+        return sendSuccess(res, files, 'Files retrieved successfully');
+    } catch (error) {
+        console.error('❌ Get submission files error:', error);
+        return sendError(res, 'Failed to retrieve files', 500);
+    }
+};
+
+/**
  * @route GET /api/book-chapters/:id/discussions
  * @desc Get discussion messages for a submission
  * @access Private
@@ -805,5 +878,71 @@ export const downloadFile = async (req: AuthRequest, res: Response) => {
     } catch (error) {
         console.error('❌ Download file error:', error);
         return sendError(res, 'Failed to download file', 500);
+    }
+};
+
+/**
+ * @route GET /api/book-chapters/by-book-title
+ * @desc Get all submissions for a specific book title (admin/editor only)
+ *       Used during publication to aggregate all authors across submissions.
+ * @access Private (Admin, Editor)
+ * @query title - exact book title name OR numeric book title ID
+ */
+export const getSubmissionsByBookTitle = async (req: AuthRequest, res: Response) => {
+    try {
+        const user = req.authenticatedUser;
+        if (!user) return sendError(res, 'User not authenticated', 401);
+
+        const { title } = req.query as { title?: string };
+        if (!title?.trim()) return sendError(res, 'Book title is required', 400);
+
+        // If title is numeric, treat it as a BookTitle ID and resolve the text title first
+        let bookTitleText = title.trim();
+        const possibleId = parseInt(bookTitleText);
+        if (!isNaN(possibleId) && bookTitleText === possibleId.toString()) {
+            const btRecord = await BookTitle.findByPk(possibleId);
+            if (btRecord) {
+                bookTitleText = btRecord.title;
+            }
+        }
+
+        // Find all submissions where bookTitle matches the resolved text (case-insensitive)
+        // Also match by numeric ID stored as string (legacy)
+        const bookTitleRecord = await BookTitle.findOne({
+            where: Sequelize.where(
+                Sequelize.fn('LOWER', Sequelize.col('title')),
+                bookTitleText.toLowerCase()
+            )
+        });
+
+        const whereConditions: any[] = [
+            // Match by text title
+            Sequelize.where(
+                Sequelize.fn('LOWER', Sequelize.col('bookTitle')),
+                bookTitleText.toLowerCase()
+            ),
+        ];
+
+        // Also match by numeric ID if we found a record
+        if (bookTitleRecord) {
+            whereConditions.push({ bookTitle: bookTitleRecord.id.toString() });
+        }
+
+        const submissions = await BookChapterSubmission.findAll({
+            where: { [Op.or]: whereConditions },
+            include: [
+                {
+                    model: User,
+                    as: 'submitter',
+                    attributes: ['id', 'fullName', 'email'],
+                },
+            ],
+            order: [['submissionDate', 'ASC']],
+        });
+
+        return sendSuccess(res, { submissions, bookTitle: bookTitleText }, 'Submissions retrieved successfully');
+    } catch (error) {
+        console.error('❌ getSubmissionsByBookTitle error:', error);
+        return sendError(res, 'Failed to retrieve submissions by book title', 500);
     }
 };

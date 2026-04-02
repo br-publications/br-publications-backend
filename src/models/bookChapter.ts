@@ -8,13 +8,14 @@ interface BookChapterAttributes {
     description: string | null;
     isActive: boolean;
     isPublished: boolean;
+    isReadyForPublication: boolean;
     createdAt?: Date;
     updatedAt?: Date;
 }
 
 interface BookChapterCreationAttributes extends Optional<
     BookChapterAttributes,
-    'id' | 'chapterNumber' | 'description' | 'isActive' | 'isPublished'
+    'id' | 'chapterNumber' | 'description' | 'isActive' | 'isPublished' | 'isReadyForPublication'
 > { }
 
 class BookChapter extends Model<
@@ -28,6 +29,7 @@ class BookChapter extends Model<
     public description!: string | null;
     public isActive!: boolean;
     public isPublished!: boolean;
+    public isReadyForPublication!: boolean;
 
     public readonly createdAt!: Date;
     public readonly updatedAt!: Date;
@@ -124,6 +126,11 @@ class BookChapter extends Model<
                     allowNull: false,
                 },
                 isPublished: {
+                    type: DataTypes.BOOLEAN,
+                    defaultValue: false,
+                    allowNull: false,
+                },
+                isReadyForPublication: {
                     type: DataTypes.BOOLEAN,
                     defaultValue: false,
                     allowNull: false,

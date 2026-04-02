@@ -6,6 +6,7 @@ import {
     updateBookTitle,
     deleteBookTitle,
     getBookTitleWithChapters,
+    getBookTitleByExactTitle,
 } from '../controllers/bookTitleController';
 import { authenticate, requireVerified } from '../middleware/auth';
 import { hasPermission, requireAdmin } from '../middleware/roleBasedAccessControl.middleware';
@@ -34,6 +35,14 @@ router.get(
     authenticate,
     requireVerified,
     getAllBookTitles
+);
+
+// Get book title by exact title string (Authenticated users)
+router.get(
+    '/by-title',
+    authenticate,
+    requireVerified,
+    getBookTitleByExactTitle
 );
 
 // Get book title by ID (Authenticated users)

@@ -28,7 +28,7 @@ export interface PublishedBookAttributes {
     synopsis: Record<string, string> | null;
     scope: Record<string, string> | null;
     tableContents: Record<string, string> | null;
-    authorBiographies: Record<string, { authorName: string; biography: string }> | null;
+    authorBiographies: Record<string, { authorName: string; affiliation: string; email?: string; biography: string }> | null;
     archives: Record<string, string> | null;
     pricing: Record<string, number> | null;
     googleLink: string | null;
@@ -64,7 +64,7 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
     public synopsis!: Record<string, string> | null;
     public scope!: Record<string, string> | null;
     public tableContents!: Record<string, string> | null;
-    public authorBiographies!: Record<string, { authorName: string; biography: string }> | null;
+    public authorBiographies!: Record<string, { authorName: string; affiliation: string; email?: string; biography: string }> | null;
     public archives!: Record<string, string> | null;
     public pricing!: Record<string, number> | null;
     public googleLink!: string | null;

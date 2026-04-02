@@ -22,7 +22,7 @@ import {
     sendNotificationsForNewSubmission,
     notifyEditorOfFullChapterUpload
 } from './commonController';
-import { sendBookChapterEditorAssignedEmail } from '../../utils/emails/bookChapterEmails';
+import { sendBookChapterEditorAssignedEmail, sendBookChapterProofReviewedEmail } from '../../utils/emails/bookChapterEmails';
 
 /**
  * @route POST /api/book-chapters/submit
@@ -281,8 +281,9 @@ export const submitBookChapter = async (req: AuthRequest, res: Response) => {
                                 authorName: `${mainAuthor.firstName} ${mainAuthor.lastName}`,
                                 bookTitle: submission.bookTitle,
                                 chapters: resolvedChapterTitles,
-                                assignedBy: 'Author (upon submission)',
-                                submissionId: submission.id
+                                assignedBy: `${mainAuthor.firstName} ${mainAuthor.lastName}`,
+                                submissionId: submission.id,
+                                isAuthorSelection: true
                             }
                         ).catch((err: any) => console.error('❌ Error sending editor email:', err));
                     });
@@ -1324,3 +1325,102 @@ async function notifyReviewersOfRevision(submission: BookChapterSubmission, auth
         console.error("Error notifying reviewers of revision", error);
     }
 }
+
+/**
+ * @route POST /api/book-chapters/:id/review-proof
+ * @desc Author accepts or rejects the proof
+ * @access Private (Author)
+ */
+export const reviewProof = async (req: AuthRequest, res: Response) => {
+    const sequelize = BookChapterSubmission.sequelize;
+    if (!sequelize) return sendError(res, 'Database connection not initialized', 500);
+
+    const transaction = await sequelize.transaction();
+    try {
+        const user = req.authenticatedUser;
+        const submissionId = parseInt(req.params.id);
+        const { decision, notes } = req.body; // 'accept' | 'reject'
+
+        if (!user) {
+            await transaction.rollback();
+            return sendError(res, 'Authentication required', 401);
+        }
+
+        if (!decision || !['accept', 'reject'].includes(decision)) {
+            await transaction.rollback();
+            return sendError(res, 'Decision must be "accept" or "reject"', 400);
+        }
+
+        const submission = await BookChapterSubmission.findByPk(submissionId, { transaction });
+        if (!submission) {
+            await transaction.rollback();
+            return sendError(res, 'Submission not found', 404);
+        }
+
+        if (submission.submittedBy !== user.id) {
+            await transaction.rollback();
+            return sendError(res, 'You are not the owner of this submission', 403);
+        }
+
+        if (submission.proofStatus !== 'SENT') {
+            await transaction.rollback();
+            return sendError(res, 'No proof is currently pending review', 400);
+        }
+
+        submission.proofStatus = decision === 'accept' ? 'ACCEPTED' : 'REJECTED';
+        submission.authorProofNotes = notes || null;
+        submission.lastUpdatedBy = user.id;
+        await submission.save({ transaction });
+
+        await BookChapterStatusHistory.create({
+            submissionId: submission.id,
+            previousStatus: submission.status,
+            newStatus: submission.status,
+            changedBy: user.id,
+            action: decision === 'accept' ? 'Proof Accepted' : 'Proof Rejected',
+            notes: notes || `Author ${decision}ed the proof`,
+            metadata: { decision },
+        }, { transaction });
+
+        await transaction.commit();
+
+        // Notify editor
+        if (submission.assignedEditorId) {
+            const displayBookTitle = await resolveDisplayBookTitle(submission.bookTitle);
+            notificationService.createNotification({
+                recipientId: submission.assignedEditorId,
+                senderId: user.id,
+                type: decision === 'accept' ? NotificationType.SUCCESS : NotificationType.WARNING,
+                category: NotificationCategory.SUBMISSION,
+                title: decision === 'accept' ? 'Proof Accepted' : 'Proof Rejected',
+                message: `The author has ${decision}ed the proof for "${displayBookTitle}".${decision === 'reject' ? ` Reason: ${notes}` : ''}`,
+                relatedEntityId: submission.id,
+                relatedEntityType: 'BookChapterSubmission',
+            }).catch(console.error);
+
+            try {
+                const editor = await User.findByPk(submission.assignedEditorId);
+                if (editor && editor.email) {
+                    await sendBookChapterProofReviewedEmail(
+                        editor.email,
+                        editor.fullName,
+                        {
+                            bookTitle: displayBookTitle,
+                            decision: decision === 'accept' ? 'ACCEPTED' : 'REJECTED',
+                            authorProofNotes: notes || 'No additional notes provided.',
+                            submissionId: submission.id
+                        }
+                    );
+                }
+            } catch (emailError) {
+                console.error('❌ Error sending proof reviewed email:', emailError);
+            }
+        }
+
+        return sendSuccess(res, submission, `Proof ${decision}ed successfully`);
+    } catch (error) {
+        await transaction.rollback();
+        console.error('❌ Review proof error:', error);
+        return sendError(res, 'Failed to process proof review', 500);
+    }
+};

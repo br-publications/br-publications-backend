@@ -44,6 +44,13 @@ router.get('/categories', controller.getCategories);
 /** GET /api/book-chapter-publishing/:id - Full detail of one published chapter */
 router.get('/:id', controller.getPublishedChapterById);
 
+/** GET /api/book-chapter-publishing/authors - List all authors */
+router.get('/authors', controller.getAllPublishedAuthors);
+
+/** GET /api/book-chapter-publishing/authors/:id - Author detail with chapters */
+router.get('/authors/:id', controller.getPublishedAuthorById);
+
+
 /** GET /api/book-chapter-publishing/:id/cover - Serve cover image binary */
 router.get('/:id/cover', controller.getChapterCover);
 
@@ -55,6 +62,12 @@ router.get('/:id/toc/:chapterIndex/pdf', controller.getChapterPdf);
 
 /** GET /api/book-chapter-publishing/:id/extra-pdf/:type - Serve extra frontmatter PDFs */
 router.get('/:id/extra-pdf/:type', controller.getExtraPdf);
+
+/** GET /api/book-chapter-publishing/download/:fileId - Fetch any published file by its UUID (with caching) */
+router.get('/download/:fileId', controller.downloadPublishedFile);
+
+/** POST /api/book-chapter-publishing/chapters/:chapterId/views - Increment view count */
+router.post('/chapters/:chapterId/views', controller.incrementChapterViews);
 
 // ============================================================
 // Admin routes (Auth + Admin role required)

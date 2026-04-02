@@ -429,19 +429,15 @@ export const submitReview = async (req: AuthRequest, res: Response) => {
             where: { chapterId: assignment.chapterId }
         });
 
-        // Consider 'COMPLETED' or 'REJECTED' (declined) as done. 
-        // Only trigger if all non-rejected assignments are COMPLETED.
-        // Or simpler: If all current assignments are either COMPLETED or REJECTED.
-        const allDone = allAssignments.every((a: any) =>
-            a.status === 'COMPLETED' || a.status === 'REJECTED'
-        );
+        // Check if we have at least 2 completed reviews before moving to EDITORIAL_REVIEW
+        const completedCount = allAssignments.filter((a: any) => a.status === 'COMPLETED').length;
 
-        if (allDone) {
+        if (completedCount >= 2) {
             await chapterService.updateChapterStatus(
                 assignment.chapterId,
                 ChapterStatus.EDITORIAL_REVIEW,
                 userId,
-                'All reviewers have submitted their reviews.'
+                'At least two reviewers have submitted their reviews.'
             );
         }
 

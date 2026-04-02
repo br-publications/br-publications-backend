@@ -60,7 +60,7 @@ export const sendBookChapterSubmissionReceivedEmail = async (
         <p><strong>Status:</strong> Initial Submission</p>
       </div>
       <p>We will review your submission and notify you of the next steps.</p>
-      <p><a href="${FRONTEND_URL}dashboard" style="background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Submission</a></p>
+      <p><a href="${FRONTEND_URL}dashboard/author/submissions" style="background: #4CAF50; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Submission</a></p>
       <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
     </div>`;
 
@@ -120,11 +120,99 @@ export const sendBookChapterSubmissionAdminEmail = async (
 };
 
 // ─────────────────────────────────────────────
+// DECISION NOTIFICATION — sent to Admin
+// ─────────────────────────────────────────────
+/**
+ * Trigger: Editor makes a decision on a Book Chapter abstract
+ * Template: BOOK_CHAPTER_DECISION_ADMIN
+ * Variables: {{adminName}}, {{editorName}}, {{bookTitle}}, {{chapters}}, {{decision}}, {{submissionId}}, {{currentYear}}
+ */
+export const sendBookChapterDecisionAdminEmail = async (
+    email: string,
+    adminName: string,
+    data: {
+        editorName: string;
+        bookTitle: string;
+        chapters: string;
+        decision: string;
+        submissionId: number;
+    }
+): Promise<void> => {
+    let subject = `Abstract ${data.decision}: ${data.bookTitle}`;
+    let html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Hello ${adminName},</h2>
+      <p>An editor has made a decision regarding an abstract submission.</p>
+      <div style="background: #f9f9f9; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0;">${data.bookTitle}</h3>
+        <p><strong>Editor:</strong> ${data.editorName}</p>
+        <p><strong>Decision:</strong> ${data.decision}</p>
+        <p><strong>Chapters:</strong> ${data.chapters}</p>
+        <p><strong>Submission ID:</strong> #${data.submissionId}</p>
+      </div>
+      <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
+    </div>`;
+
+    const template = await templateService.getTemplate('BOOK_CHAPTER_DECISION_ADMIN', CommunicationType.EMAIL, {
+        adminName, editorName: data.editorName, bookTitle: data.bookTitle,
+        chapters: data.chapters, decision: data.decision,
+        submissionId: data.submissionId, currentYear: new Date().getFullYear()
+    });
+    if (template) { subject = template.subject; html = template.content; }
+
+    await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
+};
+
+// ─────────────────────────────────────────────
+// DECISION NOTIFICATION — sent to Editor
+// ─────────────────────────────────────────────
+/**
+ * Trigger: Admin makes a decision on a Book Chapter abstract assigned to an Editor
+ * Template: BOOK_CHAPTER_DECISION_EDITOR
+ * Variables: {{editorName}}, {{adminName}}, {{bookTitle}}, {{chapters}}, {{decision}}, {{submissionId}}, {{currentYear}}
+ */
+export const sendBookChapterDecisionEditorEmail = async (
+    email: string,
+    editorName: string,
+    data: {
+        adminName: string;
+        bookTitle: string;
+        chapters: string;
+        decision: string;
+        submissionId: number;
+    }
+): Promise<void> => {
+    let subject = `Abstract ${data.decision}: ${data.bookTitle}`;
+    let html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Hello ${editorName},</h2>
+      <p>An administrator has recorded a decision regarding a submission assigned to you.</p>
+      <div style="background: #f9f9f9; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0;">
+        <h3 style="margin-top: 0;">${data.bookTitle}</h3>
+        <p><strong>Admin:</strong> ${data.adminName}</p>
+        <p><strong>Decision:</strong> ${data.decision}</p>
+        <p><strong>Chapters:</strong> ${data.chapters}</p>
+        <p><strong>Submission ID:</strong> #${data.submissionId}</p>
+      </div>
+      <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
+    </div>`;
+
+    const template = await templateService.getTemplate('BOOK_CHAPTER_DECISION_EDITOR', CommunicationType.EMAIL, {
+        editorName, adminName: data.adminName, bookTitle: data.bookTitle,
+        chapters: data.chapters, decision: data.decision,
+        submissionId: data.submissionId, currentYear: new Date().getFullYear()
+    });
+    if (template) { subject = template.subject; html = template.content; }
+
+    await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
+};
+
+// ─────────────────────────────────────────────
 // EDITOR ASSIGNED — sent to Editor
 // ─────────────────────────────────────────────
 /**
  * Trigger: Admin assigns an Editor to a Book Chapter submission
- * Template: BOOK_CHAPTER_EDITOR_ASSIGNED
+ * Template: BOOK_CHAPTER_EDITOR_ASSIGNED / BOOK_CHAPTER_EDITOR_SELECTED_BY_AUTHOR
  * Variables: {{editorName}}, {{authorName}}, {{bookTitle}}, {{chapters}}, {{assignedBy}}, {{frontendUrl}}
  */
 export const sendBookChapterEditorAssignedEmail = async (
@@ -136,27 +224,49 @@ export const sendBookChapterEditorAssignedEmail = async (
         chapters: string | number;
         assignedBy: string;
         submissionId: number;
+        isAuthorSelection?: boolean;
     }
 ): Promise<void> => {
-    let subject = `New Editor Assignment: ${data.bookTitle}`;
+    const templateCode = data.isAuthorSelection
+        ? 'BOOK_CHAPTER_EDITOR_SELECTED_BY_AUTHOR'
+        : 'BOOK_CHAPTER_EDITOR_ASSIGNED';
+
+    let subject = data.isAuthorSelection
+        ? `New Editor Selection: ${data.bookTitle}`
+        : `New Editor Assignment: ${data.bookTitle}`;
+
+    const assignmentText = data.isAuthorSelection
+        ? 'You have been selected as editor for a book chapter submission.'
+        : 'You have been assigned as editor for a book chapter submission.';
+
+    const assignedByLabel = data.isAuthorSelection
+        ? 'Selected by:'
+        : 'Assigned by:';
+
     let html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>Hello ${editorName},</h2>
-      <p>You have been assigned as editor for a book chapter submission.</p>
+      <p>${assignmentText}</p>
       <div style="background: #f9f9f9; border-left: 4px solid #2196F3; padding: 20px; margin: 20px 0;">
         <h3 style="margin-top: 0;">${data.bookTitle}</h3>
         <p><strong>Author:</strong> ${data.authorName}</p>
         <p><strong>Chapters:</strong> ${data.chapters}</p>
-        <p><strong>Assigned by:</strong> ${data.assignedBy}</p>
+        <p><strong>${assignedByLabel}</strong> ${data.assignedBy}</p>
       </div>
       <p><a href="${FRONTEND_URL}dashboard/editor" style="background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Submission</a></p>
       <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
     </div>`;
 
-    const template = await templateService.getTemplate('BOOK_CHAPTER_EDITOR_ASSIGNED', CommunicationType.EMAIL, {
-        editorName, authorName: data.authorName, bookTitle: data.bookTitle,
-        chapters: data.chapters, assignedBy: data.assignedBy, frontendUrl: FRONTEND_URL
+    const template = await templateService.getTemplate(templateCode, CommunicationType.EMAIL, {
+        editorName,
+        authorName: data.authorName,
+        bookTitle: data.bookTitle,
+        chapters: data.chapters,
+        assignedBy: data.assignedBy,
+        frontendUrl: FRONTEND_URL,
+        currentYear: new Date().getFullYear()
     });
+
     if (template) { subject = template.subject; html = template.content; }
 
     await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
@@ -453,7 +563,7 @@ export const sendBookChapterDecisionEmail = async (
         <p><strong>By:</strong> ${data.editorName}</p>
         ${data.editorNotes ? `<div style="background: #fff; padding: 15px; margin-top: 15px; border: 1px solid #ddd; border-radius: 4px;"><strong>Editor Notes:</strong><p style="white-space: pre-wrap; margin: 8px 0 0;">${data.editorNotes}</p></div>` : ''}
       </div>
-      <p><a href="${FRONTEND_URL}dashboard" style="background: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Details</a></p>
+      <p><a href="${FRONTEND_URL}dashboard/author/submissions" style="background: ${color}; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Details</a></p>
       <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
     </div>`;
 
@@ -555,7 +665,7 @@ export const sendBookChapterStatusChangedEmail = async (
         <p><strong>Updated by:</strong> ${data.changedBy}</p>
         ${adminNoteHtml}
       </div>
-      <p><a href="${FRONTEND_URL}dashboard" style="background: #FF9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Details</a></p>
+      <p><a href="${FRONTEND_URL}dashboard/author/submissions" style="background: #FF9800; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Details</a></p>
       <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
     </div>`;
 
@@ -722,6 +832,150 @@ export const sendBookChapterPublishedEmail = async (
 
     await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
 };
+
+// ─────────────────────────────────────────────
+// INDIVIDUAL CHAPTER PUBLISHED — sent to Chapter Author
+// ─────────────────────────────────────────────
+/**
+ * Trigger: Individual Book Chapter is successfully published
+ * Template: BOOK_CHAPTER_INDIVIDUAL_PUBLISHED
+ * Variables: {{authorName}}, {{bookTitle}}, {{chapterTitle}}, {{chapterNumber}}, {{isbn}}, {{doi}}, {{publicationDate}}, {{link}}
+ */
+export const sendIndividualChapterPublishedEmail = async (
+    email: string,
+    data: {
+        authorName: string;
+        bookTitle: string;
+        chapterTitle: string;
+        chapterNumber?: string | number;
+        isbn: string;
+        doi: string;
+        publicationDate: string;
+        link: string;
+    }
+): Promise<void> => {
+    let subject = `Congratulations! Your Chapter Published: ${data.chapterTitle}`;
+    let html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+      <div style="background: #1e5292; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Congratulations! 🎊</h1>
+      </div>
+      
+      <div style="padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #1e5292; margin-top: 0;">Hello ${data.authorName},</h2>
+        <p style="font-size: 16px;">We are delighted to inform you that your chapter has been officially published by BR Publications.</p>
+        
+        <div style="background: #f8fafc; border-left: 4px solid #1e5292; padding: 20px; margin: 25px 0;">
+          <h3 style="margin-top: 0; color: #1e5292; font-size: 18px;">${data.chapterTitle}</h3>
+          <p style="margin-bottom: 5px;"><strong>Part of the Book:</strong> ${data.bookTitle}</p>
+          ${data.chapterNumber ? `<p style="margin-bottom: 5px;"><strong>Chapter Number:</strong> ${data.chapterNumber}</p>` : ''}
+          <p style="margin-bottom: 5px;"><strong>ISBN:</strong> ${data.isbn}</p>
+          <p style="margin-bottom: 5px;"><strong>DOI:</strong> ${data.doi}</p>
+          <p style="margin-bottom: 0;"><strong>Publication Date:</strong> ${data.publicationDate}</p>
+        </div>
+        
+        <p>Your contribution is now part of our official collection. You can view the publication details and explore the work using the button below:</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.link}" style="background: #1e5292; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View Publication Details</a>
+        </div>
+        
+        <p style="margin-bottom: 0;">Warm regards,</p>
+        <p style="margin-top: 5px; font-weight: bold; color: #1e5292;">The BR Publications Team</p>
+      </div>
+      
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 20px;">
+        This is an automated notification. Please do not reply directly to this email.
+      </p>
+    </div>`;
+
+    const template = await templateService.getTemplate('BOOK_CHAPTER_INDIVIDUAL_PUBLISHED', CommunicationType.EMAIL, {
+        authorName: data.authorName,
+        bookTitle: data.bookTitle,
+        chapterTitle: data.chapterTitle,
+        chapterNumber: data.chapterNumber || '',
+        isbn: data.isbn,
+        doi: data.doi,
+        publicationDate: data.publicationDate,
+        link: data.link
+    });
+
+    if (template) {
+        subject = template.subject;
+        html = template.content;
+    }
+
+    await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
+};
+
+
+// ─────────────────────────────────────────────
+// INDIVIDUAL CHAPTER DOI UPDATED — sent to Chapter Author
+// ─────────────────────────────────────────────
+/**
+ * Trigger: DOI assigned to an already published Book Chapter
+ * Template: BOOK_CHAPTER_DOI_UPDATED
+ * Variables: {{authorName}}, {{bookTitle}}, {{doi}}, {{isbn}}, {{link}}
+ */
+export const sendIndividualChapterDoiUpdatedEmail = async (
+    email: string,
+    data: {
+        authorName: string;
+        bookTitle: string;
+        doi: string;
+        isbn: string;
+        link: string;
+    }
+): Promise<void> => {
+    let subject = `Important Update: DOI Assigned to ${data.bookTitle}`;
+    let html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
+      <div style="background: #1e5292; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Publication Update Activity 🔗</h1>
+      </div>
+      
+      <div style="padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+        <h2 style="color: #1e5292; margin-top: 0;">Hello ${data.authorName},</h2>
+        <p style="font-size: 16px;">We are writing to inform you that a Digital Object Identifier (DOI) has been successfully assigned to your published book chapter in <strong>${data.bookTitle}</strong>.</p>
+        
+        <div style="background: #f8fafc; border-left: 4px solid #1e5292; padding: 20px; margin: 25px 0;">
+          <p style="margin-bottom: 5px;"><strong>Book Title:</strong> ${data.bookTitle}</p>
+          <p style="margin-bottom: 5px;"><strong>DOI:</strong> ${data.doi}</p>
+          <p style="margin-bottom: 0;"><strong>ISBN:</strong> ${data.isbn}</p>
+        </div>
+        
+        <p>Having a DOI ensures that your work is permanently discoverable and citable. We encourage you to use this DOI when sharing your work or referencing it in your CV.</p>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${data.link}" style="background: #1e5292; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">View Publication Details</a>
+        </div>
+        
+        <p style="margin-bottom: 0;">Warm regards,</p>
+        <p style="margin-top: 5px; font-weight: bold; color: #1e5292;">The BR Publications Team</p>
+      </div>
+      
+      <p style="color: #94a3b8; font-size: 12px; text-align: center; margin-top: 20px;">
+        This is an automated notification. Please do not reply directly to this email.
+      </p>
+    </div>`;
+
+    const template = await templateService.getTemplate('BOOK_CHAPTER_DOI_UPDATED', CommunicationType.EMAIL, {
+        authorName: data.authorName,
+        bookTitle: data.bookTitle,
+        doi: data.doi,
+        isbn: data.isbn,
+        link: data.link,
+        currentYear: new Date().getFullYear().toString()
+    });
+
+    if (template) {
+        subject = template.subject;
+        html = template.content;
+    }
+
+    await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
+};
+
 
 // ─────────────────────────────────────────────
 // REVIEWER RESPONSE — sent to Editor/Admin
@@ -1024,6 +1278,98 @@ export const notifyAuthorsProofEditing = async (
         const name = `${correspondingAuthor.firstName} ${correspondingAuthor.lastName}`;
         await sendIfNew(correspondingAuthor.email, name);
     }
+};
+
+// ─────────────────────────────────────────────
+// PROOF SENT — sent to Author
+// ─────────────────────────────────────────────
+export const sendBookChapterProofSentEmail = async (
+    email: string,
+    name: string,
+    data: {
+        bookTitle: string;
+        submissionId: number;
+    }
+): Promise<void> => {
+    let subject = `Proof Document Ready for Review: ${data.bookTitle}`;
+    let html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Hello ${name},</h2>
+      <p>The editor has uploaded a proof document for your book chapter submission <strong>${data.bookTitle}</strong>. Please review it carefully.</p>
+      <p><a href="${FRONTEND_URL}dashboard/author/submissions" style="background: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">Go to Dashboard</a></p>
+    </div>`;
+
+    const template = await templateService.getTemplate('BOOK_CHAPTER_PROOF_SENT', CommunicationType.EMAIL, {
+        name,
+        bookTitle: data.bookTitle,
+        frontendUrl: FRONTEND_URL,
+        currentYear: new Date().getFullYear().toString()
+    });
+    if (template) { subject = template.subject; html = template.content; }
+
+    await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
+};
+
+export const notifyAuthorsProofSent = async (
+    submission: import('../../models/bookChapterSubmission').default,
+    submitter: import('../../models/user').default | null,
+    data: { bookTitle: string; }
+) => {
+    const sent = new Set<string>();
+
+    const sendIfNew = async (email: string, name: string) => {
+        const key = email.toLowerCase().trim();
+        if (sent.has(key)) return;
+        sent.add(key);
+        await sendBookChapterProofSentEmail(email, name, {
+            ...data,
+            submissionId: submission.id
+        });
+    };
+
+    if (submitter?.email) await sendIfNew(submitter.email, submitter.fullName);
+    
+    const correspondingAuthor = submission.getCorrespondingAuthor();
+    if (correspondingAuthor?.email) {
+        const name = `${correspondingAuthor.firstName} ${correspondingAuthor.lastName}`;
+        await sendIfNew(correspondingAuthor.email, name);
+    }
+};
+
+// ─────────────────────────────────────────────
+// PROOF REVIEWED — sent to Editor
+// ─────────────────────────────────────────────
+export const sendBookChapterProofReviewedEmail = async (
+    email: string,
+    name: string,
+    data: {
+        bookTitle: string;
+        decision: string;
+        authorProofNotes: string;
+        submissionId: number;
+    }
+): Promise<void> => {
+    let subject = `Author Proof Review (${data.decision}): ${data.bookTitle}`;
+    let html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Hello ${name},</h2>
+      <p>The author has reviewed the proof document for <strong>${data.bookTitle}</strong> and has <strong>${data.decision}</strong> it.</p>
+      <div style="background: #f9f9f9; border-left: 4px solid #6366f1; padding: 20px; margin: 20px 0;">
+        <strong>Author's Notes:</strong>
+        <p style="white-space: pre-wrap;">${data.authorProofNotes}</p>
+      </div>
+    </div>`;
+
+    const template = await templateService.getTemplate('BOOK_CHAPTER_PROOF_REVIEWED', CommunicationType.EMAIL, {
+        name,
+        bookTitle: data.bookTitle,
+        decision: data.decision,
+        authorProofNotes: data.authorProofNotes,
+        currentYear: new Date().getFullYear().toString()
+    });
+    if (template) { subject = template.subject; html = template.content; }
+
+    await sendEmail(email, subject, html, undefined, EmailCategory.BOOK_CHAPTER);
 };
 
 // ─────────────────────────────────────────────

@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import path from 'path';
 import fs from 'fs';
+import { promisify } from 'util';
 import { AuthRequest } from '../../middleware/auth';
 import { sendSuccess, sendError } from '../../utils/responseHandler';
 import PublishedBookChapter from '../../models/publishedBookChapter';
@@ -9,12 +10,15 @@ import BookChapterSubmission, { BookChapterStatus } from '../../models/bookChapt
 import BookChapterStatusHistory from '../../models/bookChapterStatusHistory';
 import BookChapter from '../../models/bookChapter';
 import User, { UserRole } from '../../models/user';
-import { sendDummyEmail, sendBookChapterPublishedEmail } from '../../utils/emailService';
+import { sendDummyEmail, sendBookChapterPublishedEmail, sendIndividualChapterPublishedEmail, sendIndividualChapterDoiUpdatedEmail } from '../../utils/emailService';
 import notificationService from '../../services/notificationService';
 import { NotificationType, NotificationCategory } from '../../models/notification';
 import { resolveDisplayBookTitle } from '../bookChapterSubmission/commonController';
 import sharp from 'sharp';
 import TemporaryUpload from '../../models/temporaryUpload';
+import PublishedAuthor from '../../models/publishedAuthor';
+import PublishedIndividualChapter from '../../models/publishedIndividualChapter';
+import PublishedFile from '../../models/publishedFile';
 
 const TEMP_UPLOAD_DIR = path.resolve('uploads/temp');
 
@@ -31,23 +35,73 @@ const parseJsonField = (field: any) => {
 };
 
 /**
- * Helper: Process tableContents to convert temp PDFs into permanent base64 data
+ * Shared Helper: Get file path from PublishedFile with disk caching
  */
-const processTempPdfsForTableContents = async (toc: any) => {
+const getFilePathFromPubFile = async (fileId: string, cacheDir: string): Promise<string | null> => {
+    try {
+        // 1. Check disk cache
+        if (fs.existsSync(cacheDir)) {
+            const files = fs.readdirSync(cacheDir);
+            if (files.length > 0) {
+                return path.join(cacheDir, files[0]);
+            }
+        }
+
+        // 2. Fetch from DB
+        const pubFile = await PublishedFile.findByPk(fileId);
+        if (!pubFile) return null;
+
+        // 3. Save to cache
+        if (!fs.existsSync(cacheDir)) {
+            fs.mkdirSync(cacheDir, { recursive: true });
+        }
+        const filePath = path.join(cacheDir, pubFile.fileName);
+        fs.writeFileSync(filePath, pubFile.fileData);
+
+        return filePath;
+    } catch (e) {
+        console.error('Error in getFilePathFromPubFile:', e);
+        return null;
+    }
+}
+
+/**
+ * Helper: Process tableContents to convert temp PDFs into permanent DB storage
+ */
+const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
     if (!Array.isArray(toc)) return toc;
-    
+
     for (const item of toc) {
         if (item && typeof item === 'object' && item.pdfKey) {
             try {
+                console.log(`[PDF-Storage] Moving TOC chapter "${item.title}" from temp to permanent storage...`);
                 const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
                 if (tempUpload) {
+                    // 1. Create a permanent PublishedFile record
+                    const pubFile = await PublishedFile.create({
+                        fileData: tempUpload.fileData,
+                        fileName: tempUpload.fileName,
+                        mimeType: tempUpload.mimeType,
+                        fileSize: tempUpload.fileData.length,
+                        category: 'CHAPTER'
+                    }, { transaction });
+
+                    // 2. Link by ID
+                    item.publishedFileId = pubFile.id;
+                    item.pdfName = tempUpload.fileName; // Keep the name for easy display
+
+                    // 3. Keep pdfData (base64) for backward compatibility if needed (deprecated)
                     item.pdfData = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`;
+
+                    // Cleanup temp reference
                     delete item.pdfKey;
+
                     // Delete temp upload after processing
-                    await tempUpload.destroy();
+                    await tempUpload.destroy({ transaction });
+                    console.log(`[PDF-Storage] ✅ Moved TOC chapter PDF to DB. File ID: ${pubFile.id}`);
                 }
             } catch (e) {
-                console.error('Error processing temp PDF for TOC:', e);
+                console.error('❌ Error processing temp PDF for TOC:', e);
             }
         }
     }
@@ -55,24 +109,40 @@ const processTempPdfsForTableContents = async (toc: any) => {
 };
 
 /**
- * Helper: Process frontmatterPdfs to convert temp PDFs into permanent base64 data
+ * Helper: Process frontmatterPdfs to convert temp PDFs into permanent DB storage
  */
-const processTempPdfsForFrontmatter = async (frontmatter: any) => {
+const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any) => {
     if (!frontmatter || typeof frontmatter !== 'object') return frontmatter;
-    
+
     for (const key of Object.keys(frontmatter)) {
         const item = frontmatter[key];
         if (item && typeof item === 'object' && item.pdfKey) {
             try {
+                console.log(`[PDF-Storage] Moving Frontmatter "${key}" from temp to permanent storage...`);
                 const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
                 if (tempUpload) {
-                    item.data = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`;
+                    // 1. Create a permanent PublishedFile record
+                    const pubFile = await PublishedFile.create({
+                        fileData: tempUpload.fileData,
+                        fileName: tempUpload.fileName,
+                        mimeType: tempUpload.mimeType,
+                        fileSize: tempUpload.fileData.length,
+                        category: 'FRONTMATTER'
+                    }, { transaction });
+
+                    // 2. Update metadata
+                    item.publishedFileId = pubFile.id;
+                    item.name = tempUpload.fileName;
+                    item.data = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`; // Keep base64 for now
+
                     delete item.pdfKey;
+
                     // Delete temp upload after processing
-                    await tempUpload.destroy();
+                    await tempUpload.destroy({ transaction });
+                    console.log(`[PDF-Storage] ✅ Moved Frontmatter PDF to DB. File ID: ${pubFile.id}`);
                 }
             } catch (e) {
-                console.error('Error processing temp PDF for Frontmatter:', e);
+                console.error('❌ Error processing temp PDF for Frontmatter:', e);
             }
         }
     }
@@ -171,6 +241,160 @@ const sendPublicationNotifications = async (
     }
 };
 
+/**
+ * Helper: Sends individual chapter publication notifications to all authors
+ * of each chapter in the book.
+ */
+const sendIndividualChapterNotifications = async (
+    publishedBookChapterId: number
+) => {
+    try {
+        console.log(`[IndividualChapterNotifications] Starting for book ID: ${publishedBookChapterId}`);
+
+        // Fetch the book chapter with its individual chapters and authors
+        const book = await PublishedBookChapter.findByPk(publishedBookChapterId, {
+            include: [
+                {
+                    model: PublishedIndividualChapter,
+                    as: 'chapters', // FIXED ALIAS: matched with PublishedBookChapter.hasMany as 'chapters'
+                    include: [
+                        {
+                            model: PublishedAuthor,
+                            as: 'authorDetails',
+                            through: { attributes: [] }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        if (!book) {
+            console.warn(`[IndividualChapterNotifications] Book with ID ${publishedBookChapterId} not found.`);
+            return;
+        }
+
+        const chapters = (book as any).chapters || [];
+        console.log(`[IndividualChapterNotifications] Processing "${book.title}". Found ${chapters.length} chapters.`);
+
+        const publicationDate = new Date().toLocaleDateString();
+        const baseLink = `${process.env.FRONTEND_URL}/product/find/${book.isbn}`;
+
+        for (const chapter of chapters) {
+            const chapterTitle = chapter.title;
+            const chapterNumber = chapter.chapterNumber;
+
+            // Deduplicate emails per chapter
+            const chapterEmailRecipients = new Map<string, string>(); // Email -> Name
+
+            const authors = chapter.authorDetails || [];
+            for (const author of authors) {
+                if (author.email) {
+                    const email = author.email.toLowerCase().trim();
+                    if (!chapterEmailRecipients.has(email)) {
+                        chapterEmailRecipients.set(email, author.name);
+                    }
+                }
+            }
+
+            if (chapterEmailRecipients.size === 0) {
+                console.log(`[IndividualChapterNotifications] No authors with emails found for chapter: "${chapterTitle}"`);
+                continue;
+            }
+
+            // Send emails to all authors of this specific chapter
+            for (const [email, name] of chapterEmailRecipients.entries()) {
+                console.log(`[IndividualChapterNotifications] Attempting to send email to ${email} for chapter: "${chapterTitle}"`);
+                sendIndividualChapterPublishedEmail(email, {
+                    authorName: name,
+                    bookTitle: book.title,
+                    chapterTitle,
+                    chapterNumber,
+                    isbn: book.isbn,
+                    doi: book.doi || 'N/A',
+                    publicationDate,
+                    link: baseLink
+                }).catch(err => console.error(`❌ Individual chapter email failed for ${email} (Chapter: ${chapterTitle}):`, err));
+            }
+        }
+    } catch (err) {
+        console.error('❌ Error in sendIndividualChapterNotifications:', err);
+    }
+};
+
+/**
+ * Helper: Sends individual chapter DOI updated notifications to all authors
+ * of each chapter in the published book if a new DOI is set.
+ */
+const sendBookChapterDoiUpdatedNotifications = async (
+    publishedBookChapterId: number
+) => {
+    try {
+        console.log(`[IndividualChapterNotifications] Triggered by DOI update for book ID: ${publishedBookChapterId}`);
+
+        // Fetch the book chapter with its individual chapters and authors
+        const book = await PublishedBookChapter.findByPk(publishedBookChapterId, {
+            include: [
+                {
+                    model: PublishedIndividualChapter,
+                    as: 'chapters',
+                    include: [
+                        {
+                            model: PublishedAuthor,
+                            as: 'authorDetails',
+                            through: { attributes: [] }
+                        }
+                    ]
+                }
+            ]
+        });
+
+        if (!book || !book.doi) {
+            console.warn(`[IndividualChapterNotifications] Cannot send DOI update emails: Book not found or DOI missing.`);
+            return;
+        }
+
+        const chapters = (book as any).chapters || [];
+        const baseLink = `${process.env.FRONTEND_URL}/product/find/${book.isbn}`;
+
+        // Deduplicate over the WHOLE BOOK, since we want to notify all authors that the book got a DOI
+        const bookEmailRecipients = new Map<string, string>(); // Email -> Name
+
+        for (const chapter of chapters) {
+            const authors = chapter.authorDetails || [];
+            for (const author of authors) {
+                if (author.email) {
+                    const email = author.email.toLowerCase().trim();
+                    if (!bookEmailRecipients.has(email)) {
+                        bookEmailRecipients.set(email, author.name);
+                    }
+                }
+            }
+        }
+
+        if (bookEmailRecipients.size === 0) {
+            console.log(`[IndividualChapterNotifications] No authors with emails found for book DOI update.`);
+            return;
+        }
+
+        // Send emails to all unique authors of the book
+        for (const [email, name] of bookEmailRecipients.entries()) {
+            console.log(`[IndividualChapterNotifications] Sending DOI update email to ${email} for book: "${book.title}"`);
+            sendIndividualChapterDoiUpdatedEmail(email, {
+                authorName: name,
+                bookTitle: book.title,
+                doi: book.doi,
+                isbn: book.isbn,
+                link: baseLink
+            }).catch((err: any) => console.error(`❌ DOI update email failed for ${email}:`, err));
+        }
+
+    } catch (err) {
+        console.error('❌ Error in sendBookChapterDoiUpdatedNotifications:', err);
+    }
+};
+
+
+
 // ============================================================
 // ADMIN: Upload a single PDF to temporary storage
 // ============================================================
@@ -195,7 +419,7 @@ export const uploadTempPdf = async (req: AuthRequest, res: Response) => {
 
         // 1. Save to Database
         const expiresAt = new Date();
-        expiresAt.setHours(expiresAt.getHours() + 24);
+        expiresAt.setDate(expiresAt.getDate() + 45); // Extends temporary hold to 45 days
 
         const tempUpload = await TemporaryUpload.create({
             fileData: file.buffer,
@@ -247,7 +471,7 @@ export const uploadTempPdf = async (req: AuthRequest, res: Response) => {
  *    synopsis    (JSON object  { paragrapgh_1: "…" }),
  *    scope       (JSON object  { intro: "…", item_1: "…" }),
  *    tableContents (JSON array [{ title, chapterNumber, pages, pdfData, pdfMimeType, pdfName }]),
- *    authorBiographies (JSON array [{ authorName, biography }]),
+ *    authorBiographies (JSON array [{ authorName, email, biography }]),
  *    archives    (JSON object  { paragrapgh_1: "…" }),
  *    pricing     (JSON object  { softCopyPrice: 0, hardCopyPrice: 0, combinedPrice: 0 }),
  *    frontmatterPdfs (JSON object { dedication: { data: "base64...", name: "a.pdf", mimeType: "application/pdf" }, ...})
@@ -322,7 +546,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             googleLink,
             flipkartLink,
             amazonLink,
-            frontmatterPdfs, mainAuthor, coAuthorsData, keywords,
+            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor
         } = req.body;
 
         // Validate required fields — fall back to the ISBN already recorded on the submission
@@ -352,7 +576,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             doi: doi || null,
             synopsis: parseJsonField(synopsis),
             scope: parseJsonField(scope),
-            tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)),
+            tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction),
             authorBiographies: parseJsonField(authorBiographies),
             archives: parseJsonField(archives),
             pricing: parseJsonField(pricing),
@@ -360,7 +584,9 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             flipkartLink: flipkartLink || null,
             amazonLink: amazonLink || null,
             keywords: keywords || submission.keywords || [],
-            frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs)),
+            frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs), transaction),
+            editors: Array.isArray(editors) ? editors : (editors ? [editors] : []),
+            primaryEditor: primaryEditor || null,
             isHidden: false,
             isFeatured: false,
         };
@@ -376,6 +602,67 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
         } else {
             publishedChapter = await PublishedBookChapter.create(bookData, { transaction });
         }
+
+        // --- Populate Relational Tables (Normalized Data) ---
+        const authorMap = new Map<string, any>();
+        const bios = parseJsonField(authorBiographies) || [];
+        for (const bio of bios) {
+            let pAuthor = await PublishedAuthor.findOne({
+                where: { name: bio.authorName, email: bio.email || null },
+                transaction
+            });
+            if (!pAuthor) {
+                pAuthor = await PublishedAuthor.create({
+                    name: bio.authorName,
+                    email: bio.email || null,
+                    affiliation: bio.affiliation || '',
+                    biography: bio.biography || '',
+                    userId: null, // Optional: Link to user if email matches
+                }, { transaction });
+            } else {
+                await pAuthor.update({
+                    affiliation: bio.affiliation || pAuthor.affiliation,
+                    biography: bio.biography || pAuthor.biography,
+                }, { transaction });
+            }
+            authorMap.set(bio.authorName, pAuthor);
+        }
+
+        // Clear existing relational chapters for this book record if updating
+        await PublishedIndividualChapter.destroy({
+            where: { publishedBookChapterId: publishedChapter.id },
+            transaction
+        });
+
+        const toc = bookData.tableContents || [];
+        for (const item of toc) {
+            const individualChapter = await PublishedIndividualChapter.create({
+                publishedBookChapterId: publishedChapter.id,
+                title: item.title,
+                chapterNumber: item.chapterNumber || null,
+                authors: item.authors || null,
+                pagesFrom: item.pagesFrom || item.pages || null,
+                pagesTo: item.pagesTo || null,
+                publishedFileId: item.publishedFileId || null,
+                pdfKey: item.pdfKey || null,
+                pdfName: item.pdfName || null,
+                abstract: item.abstract || null,
+            }, { transaction });
+
+            // Link to authors by matching selected names from the TOC
+            if (item.authors) {
+                const chapterAuthorNames = item.authors.split(',').map((n: string) => n.trim()).filter(Boolean);
+                for (const name of chapterAuthorNames) {
+                    const authorRecord = authorMap.get(name);
+                    if (authorRecord) {
+                        // Use association helper added by Sequelize for M:N relation
+                        // The 'as: authorDetails' in PublishedIndividualChapter.associate
+                        await (individualChapter as any).addAuthorDetail(authorRecord, { transaction });
+                    }
+                }
+            }
+        }
+
 
         // Update submission status → PUBLISHED
         const previousStatus = submission.status;
@@ -400,6 +687,57 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         await transaction.commit();
 
+        // --- Cascade PUBLISHED status to all other submissions for the same book title (non-blocking) ---
+        const bookTitleValue = submission.bookTitle;
+        (async () => {
+            try {
+                // Resolve the text title if bookTitle is stored as a numeric ID
+                let textTitle = bookTitleValue;
+                const { default: BookTitleModel } = await import('../../models/bookTitle');
+                const parsedId = parseInt(textTitle);
+                if (!isNaN(parsedId) && textTitle.trim() === parsedId.toString()) {
+                    const bt = await BookTitleModel.findByPk(parsedId);
+                    if (bt) textTitle = bt.title;
+                }
+
+                // Find the BookTitle record to also match ID-stored submissions
+                const { Sequelize: Seq } = await import('sequelize');
+                const btRecord = await BookTitleModel.findOne({
+                    where: Seq.where(Seq.fn('LOWER', Seq.col('title')), textTitle.toLowerCase())
+                });
+
+                const orConditions: any[] = [
+                    Seq.where(Seq.fn('LOWER', Seq.col('bookTitle')), textTitle.toLowerCase()),
+                ];
+                if (btRecord) orConditions.push({ bookTitle: btRecord.id.toString() });
+
+                const relatedSubmissions = await BookChapterSubmission.findAll({
+                    where: { [Op.or]: orConditions, id: { [Op.ne]: submission.id } }
+                });
+
+                for (const related of relatedSubmissions) {
+                    if (related.status !== BookChapterStatus.PUBLISHED) {
+                        const prevStatus = related.status;
+                        related.status = BookChapterStatus.PUBLISHED;
+                        related.isbn = resolvedIsbn.trim();
+                        related.lastUpdatedBy = user.id;
+                        await related.save();
+
+                        await BookChapterStatusHistory.create({
+                            submissionId: related.id,
+                            previousStatus: prevStatus,
+                            newStatus: BookChapterStatus.PUBLISHED,
+                            changedBy: user.id,
+                            action: 'Book Chapter Published (Cascade)',
+                            notes: `Automatically marked PUBLISHED when book "${textTitle}" was published. ISBN: ${resolvedIsbn}`,
+                        });
+                    }
+                }
+            } catch (cascadeErr) {
+                console.error('❌ Error cascading PUBLISHED status to related submissions:', cascadeErr);
+            }
+        })();
+
         // --- Mark matching book_chapters rows as published (non-blocking) ---
         const tocList = parseJsonField(tableContents) || [];
         const tocTitles: string[] = tocList.map((c: any) => c.title).filter(Boolean);
@@ -418,6 +756,12 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             doi: bookData.doi || 'N/A',
             keywords: bookData.keywords
         }).catch(err => console.error('❌ Error sending publication notifications:', err));
+
+        // Send chapter-specific notifications to all authors
+        sendIndividualChapterNotifications(publishedChapter.id).catch(err =>
+            console.error('❌ Error sending individual chapter notifications:', err)
+        );
+
 
         return sendSuccess(res, { submission, publishedChapter }, 'Book chapter published successfully');
 
@@ -479,12 +823,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             googleLink,
             flipkartLink,
             amazonLink,
-            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors
+            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor
         } = req.body;
 
-        if (!title || !author || !isbn) {
+        if (!title || !isbn) {
             await transaction.rollback();
-            return sendError(res, 'Title, main author, and ISBN are required to publish directly.', 400);
+            return sendError(res, 'Title and ISBN are required to publish directly.', 400);
         }
 
         // Build the record data
@@ -508,7 +852,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             doi: doi || null,
             synopsis: parseJsonField(synopsis),
             scope: parseJsonField(scope),
-            tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)),
+            tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction),
             authorBiographies: parseJsonField(authorBiographies),
             archives: parseJsonField(archives),
             pricing: parseJsonField(pricing),
@@ -516,12 +860,65 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             flipkartLink: flipkartLink || null,
             amazonLink: amazonLink || null,
             keywords: keywords || [],
-            frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs)),
+            frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs), transaction),
+            primaryEditor: primaryEditor || null,
             isHidden: false,
             isFeatured: false,
         };
 
         const publishedChapter = await PublishedBookChapter.create(bookData, { transaction });
+
+        // --- Populate Relational Tables (Normalized Data) ---
+        const authorMap = new Map<string, any>();
+        const bios = parseJsonField(authorBiographies) || [];
+        for (const bio of bios) {
+            let pAuthor = await PublishedAuthor.findOne({
+                where: { name: bio.authorName, email: bio.email || null },
+                transaction
+            });
+            if (!pAuthor) {
+                pAuthor = await PublishedAuthor.create({
+                    name: bio.authorName,
+                    email: bio.email || null,
+                    affiliation: bio.affiliation || '',
+                    biography: bio.biography || '',
+                }, { transaction });
+            } else {
+                await pAuthor.update({
+                    affiliation: bio.affiliation || pAuthor.affiliation,
+                    biography: bio.biography || pAuthor.biography,
+                }, { transaction });
+            }
+            authorMap.set(bio.authorName, pAuthor);
+        }
+
+        const toc = bookData.tableContents || [];
+        for (const item of toc) {
+            const individualChapter = await PublishedIndividualChapter.create({
+                publishedBookChapterId: publishedChapter.id,
+                title: item.title,
+                chapterNumber: item.chapterNumber || null,
+                authors: item.authors || null,
+                pagesFrom: item.pagesFrom || item.pages || null,
+                pagesTo: item.pagesTo || null,
+                publishedFileId: item.publishedFileId || null,
+                pdfKey: item.pdfKey || null,
+                pdfName: item.pdfName || null,
+                abstract: item.abstract || null,
+            }, { transaction });
+
+            // Link to authors
+            if (item.authors) {
+                const chapterAuthorNames = item.authors.split(',').map((n: string) => n.trim()).filter(Boolean);
+                for (const name of chapterAuthorNames) {
+                    const authorRecord = authorMap.get(name);
+                    if (authorRecord) {
+                        await (individualChapter as any).addAuthorDetail(authorRecord, { transaction });
+                    }
+                }
+            }
+        }
+
 
         await transaction.commit();
 
@@ -537,6 +934,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             keywords: bookData.keywords
         }).catch(err => console.error('❌ Error sending publication notifications for direct publish:', err));
 
+        // Send chapter-specific notifications to all authors
+        sendIndividualChapterNotifications(publishedChapter.id).catch(err =>
+            console.error('❌ Error sending individual chapter notifications for direct publish:', err)
+        );
+
+
 
 
         return sendSuccess(res, { publishedChapter }, 'Direct book chapter published successfully');
@@ -545,6 +948,49 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         await transaction.rollback();
         console.error('❌ publishDirectBookChapter error:', error);
         return sendError(res, 'Failed to publish direct book chapter', 500);
+    }
+};
+
+/**
+ * @route GET /api/book-chapter-publishing/download/:fileId
+ * @desc  Fetch a published PDF from DB with disk caching.
+ * @access Public / Private (based on requirement — currently public for authors/readers)
+ */
+export const downloadPublishedFile = async (req: Request, res: Response) => {
+    const { fileId } = req.params;
+
+    if (!fileId) return sendError(res, 'File ID is required', 400);
+
+    const cacheDir = path.resolve(process.cwd(), 'uploads/published_cache', fileId);
+
+    try {
+        // 1. Check disk cache first
+        if (fs.existsSync(cacheDir)) {
+            const files = fs.readdirSync(cacheDir);
+            if (files.length > 0) {
+                const filePath = path.join(cacheDir, files[0]);
+                return res.sendFile(filePath);
+            }
+        }
+
+        // 2. Not in cache -> Fetch from DB
+        const pubFile = await PublishedFile.findByPk(fileId);
+        if (!pubFile) return sendError(res, 'File not found in permanent storage', 404);
+
+        // 3. Save to cache disk
+        if (!fs.existsSync(cacheDir)) {
+            fs.mkdirSync(cacheDir, { recursive: true });
+        }
+
+        const filePath = path.join(cacheDir, pubFile.fileName);
+        fs.writeFileSync(filePath, pubFile.fileData);
+
+        // 4. Serve file
+        return res.sendFile(filePath);
+
+    } catch (error) {
+        console.error('❌ downloadPublishedFile error:', error);
+        return sendError(res, 'Failed to download file from permanent storage', 500);
     }
 };
 
@@ -642,6 +1088,21 @@ export const getPublishedChapterById = async (req: Request, res: Response) => {
         if (isNaN(id)) return sendError(res, 'Invalid ID', 400);
 
         const chapter = await PublishedBookChapter.findByPk(id, {
+            // Include normalized chapters and their authors
+            include: [
+                {
+                    model: PublishedIndividualChapter,
+                    as: 'chapters',
+                    include: [
+                        {
+                            model: PublishedAuthor,
+                            as: 'authorDetails',
+                            attributes: ['id', 'name', 'email', 'affiliation', 'biography'],
+                            through: { attributes: [] }
+                        }
+                    ]
+                }
+            ],
             // Exclude raw binary data from detail too — serve via dedicated endpoints
             attributes: {
                 include: [
@@ -655,9 +1116,9 @@ export const getPublishedChapterById = async (req: Request, res: Response) => {
 
         return sendSuccess(res, chapter, 'Published book chapter retrieved successfully');
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('❌ getPublishedChapterById error:', error);
-        return sendError(res, 'Failed to fetch published book chapter', 500);
+        return sendError(res, `Failed to fetch published book chapter: ${error.message}`, 500);
     }
 };
 
@@ -771,8 +1232,14 @@ export const getChapterPdf = async (req: Request, res: Response) => {
 
         let buffer: Buffer;
         let filename = tocEntry.pdfName || `chapter-${chapterIndex + 1}.pdf`;
+        const cacheDir = path.resolve(process.cwd(), 'uploads/published_cache', id.toString(), 'toc', chapterIndex.toString());
 
-        if (tocEntry.pdfKey) {
+        if (tocEntry.publishedFileId) {
+            // Priority: New Permanent DB storage (PublishedFile)
+            const filePath = await getFilePathFromPubFile(tocEntry.publishedFileId, cacheDir);
+            if (filePath) return res.sendFile(filePath);
+            else return sendError(res, 'Chapter PDF not found in permanent storage', 404);
+        } else if (tocEntry.pdfKey) {
             const tempUpload = await TemporaryUpload.findByPk(tocEntry.pdfKey);
             if (tempUpload) {
                 buffer = tempUpload.fileData;
@@ -830,6 +1297,8 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             googleLink, flipkartLink, amazonLink, keywords
         } = req.body;
 
+        const previousDoi = chapter.doi;
+
         await chapter.update({
             ...(title && { title }),
             ...(author && { author }),
@@ -858,6 +1327,13 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(amazonLink !== undefined && { amazonLink }),
             ...(keywords !== undefined && { keywords }),
         });
+
+        // Check if DOI was newly added and trigger notifications
+        if (!previousDoi && doi && doi.trim() !== '') {
+            sendBookChapterDoiUpdatedNotifications(chapter.id).catch((err: any) =>
+                console.error('❌ Error sending DOI update notifications:', err)
+            );
+        }
 
         return sendSuccess(res, chapter, 'Published book chapter updated successfully');
 
@@ -941,8 +1417,14 @@ export const getExtraPdf = async (req: Request, res: Response) => {
 
         let buffer: Buffer;
         let filename = pdfEntry.name || `${type}.pdf`;
+        const cacheDir = path.resolve(process.cwd(), 'uploads/published_cache', id.toString(), 'extra', type);
 
-        if (pdfEntry.pdfKey) {
+        if (pdfEntry.publishedFileId) {
+            // Priority: New Permanent DB storage
+            const filePath = await getFilePathFromPubFile(pdfEntry.publishedFileId, cacheDir);
+            if (filePath) return res.sendFile(filePath);
+            else return sendError(res, 'Extra PDF not found in permanent storage', 404);
+        } else if (pdfEntry.pdfKey) {
             const tempUpload = await TemporaryUpload.findByPk(pdfEntry.pdfKey);
             if (tempUpload) {
                 buffer = tempUpload.fileData;
@@ -1173,3 +1655,97 @@ export const checkBookChapterIsbnAvailability = async (req: AuthRequest, res: Re
         return sendError(res, 'Failed to check ISBN availability', 500);
     }
 };
+
+/**
+ * @route GET /api/book-chapter-publishing/authors
+ * @desc  Get published authors with optional search/filter.
+ */
+export const getAllPublishedAuthors = async (req: Request, res: Response) => {
+    try {
+        const { search, name, affiliation, email } = req.query;
+        const where: any = {};
+
+        if (search) {
+            where[Op.or] = [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { affiliation: { [Op.iLike]: `%${search}%` } },
+                { email: { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+
+        if (name) {
+            where.name = { [Op.iLike]: `%${name}%` };
+        }
+        if (affiliation) {
+            where.affiliation = { [Op.iLike]: `%${affiliation}%` };
+        }
+        if (email) {
+            where.email = { [Op.iLike]: `%${email}%` };
+        }
+
+        const authors = await PublishedAuthor.findAll({
+            where,
+            order: [['name', 'ASC']]
+        });
+        return sendSuccess(res, authors);
+    } catch (error) {
+        console.error('❌ getAllPublishedAuthors error:', error);
+        return sendError(res, 'Failed to fetch authors', 500);
+    }
+};
+
+/**
+ * @route GET /api/book-chapter-publishing/authors/:id
+ * @desc  Get author details with linked chapters.
+ */
+export const getPublishedAuthorById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const author = await PublishedAuthor.findByPk(id, {
+            include: [
+                {
+                    model: PublishedIndividualChapter,
+                    as: 'chapters',
+                    include: [
+                        {
+                            model: PublishedBookChapter,
+                            as: 'book',
+                            attributes: ['id', 'title', 'isbn']
+                        }
+                    ],
+                    through: { attributes: [] }
+                }
+            ]
+        });
+        if (!author) return sendError(res, 'Author not found', 404);
+        return sendSuccess(res, author);
+    } catch (error) {
+        console.error('❌ getPublishedAuthorById error:', error);
+        return sendError(res, 'Failed to fetch author detail', 500);
+    }
+};
+
+/**
+ * @route POST /api/book-chapter-publishing/chapters/:chapterId/views
+ * @desc  Increment the view count for a specific individual chapter.
+ * @access Public
+ */
+export const incrementChapterViews = async (req: Request, res: Response) => {
+    try {
+        const { chapterId } = req.params;
+        const id = parseInt(chapterId);
+        if (isNaN(id)) return sendError(res, 'Invalid Chapter ID', 400);
+
+        const chapter = await PublishedIndividualChapter.findByPk(id);
+        if (!chapter) return sendError(res, 'Chapter not found', 404);
+
+        await chapter.increment('views', { by: 1 });
+
+        return sendSuccess(res, null, 'View count incremented successfully');
+    } catch (error) {
+        console.error('❌ incrementChapterViews error:', error);
+        return sendError(res, 'Failed to increment view count', 500);
+    }
+};
+
+

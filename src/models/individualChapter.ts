@@ -77,7 +77,8 @@ class IndividualChapter extends Model<
     public canAssignReviewers(): boolean {
         return this.status === ChapterStatus.REVIEWER_ASSIGNMENT ||
             this.status === ChapterStatus.UNDER_REVIEW ||
-            this.status === ChapterStatus.REVISION_SUBMITTED;
+            this.status === ChapterStatus.REVISION_SUBMITTED ||
+            this.status === ChapterStatus.EDITORIAL_REVIEW;
     }
 
     // Helper method to check if manuscript can be uploaded

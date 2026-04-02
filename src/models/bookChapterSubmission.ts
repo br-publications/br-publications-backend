@@ -58,6 +58,8 @@ interface BookChapterSubmissionAttributes {
   submissionDate: Date;
   lastUpdatedBy: number | null;
   notes: string | null;
+  proofStatus: 'PENDING' | 'SENT' | 'ACCEPTED' | 'REJECTED' | null;
+  authorProofNotes: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -107,6 +109,8 @@ class BookChapterSubmission extends Model<
   public submissionDate!: Date;
   public lastUpdatedBy!: number | null;
   public notes!: string | null;
+  public proofStatus!: 'PENDING' | 'SENT' | 'ACCEPTED' | 'REJECTED' | null;
+  public authorProofNotes!: string | null;
 
   public readonly discussions?: BookChapterDiscussion[];
   public readonly individualChapters?: IndividualChapter[];
@@ -416,6 +420,15 @@ class BookChapterSubmission extends Model<
           onDelete: 'SET NULL',
         },
         notes: {
+          type: DataTypes.TEXT,
+          allowNull: true,
+        },
+        proofStatus: {
+          type: DataTypes.ENUM('PENDING', 'SENT', 'ACCEPTED', 'REJECTED'),
+          defaultValue: 'PENDING',
+          allowNull: true,
+        },
+        authorProofNotes: {
           type: DataTypes.TEXT,
           allowNull: true,
         },

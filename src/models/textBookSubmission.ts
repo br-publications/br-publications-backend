@@ -192,8 +192,8 @@ class TextBookSubmission
                     allowNull: false,
                     validate: {
                         isValidAuthor(value: any) {
-                            if (!value.firstName || !value.lastName || !value.email) {
-                                throw new Error('Main author must have firstName, lastName, and email');
+                            if (!value.firstName) {
+                                throw new Error('Main author must have at least a first name');
                             }
                         }
                     }

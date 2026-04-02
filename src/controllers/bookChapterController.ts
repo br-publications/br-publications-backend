@@ -2,6 +2,8 @@ import { Request, Response } from 'express';
 import BookChapter from '../models/bookChapter';
 import BookTitle from '../models/bookTitle';
 import { Op } from 'sequelize';
+import IndividualChapter from '../models/individualChapter';
+import BookChapterSubmission from '../models/bookChapterSubmission';
 
 /**
  * @swagger
@@ -183,9 +185,10 @@ export const getChaptersByBookTitle = async (req: Request, res: Response) => {
             whereClause.isActive = true;
         }
 
-        // When includePublished=false (author view), exclude already-published chapters
+        // When includePublished=false (author view), exclude already-published or ready-for-publication chapters
         if (includePublished === 'false') {
             whereClause.isPublished = false;
+            whereClause.isReadyForPublication = false;
         }
 
         const chapters = await BookChapter.findAll({
@@ -196,6 +199,44 @@ export const getChaptersByBookTitle = async (req: Request, res: Response) => {
             ],
         });
 
+        // Enrich each chapter with the latest submission decision
+        const enriched = await Promise.all(
+            chapters.map(async (ch) => {
+                const latestIC = await IndividualChapter.findOne({
+                    where: { chapterTitle: ch.chapterTitle },
+                    include: [
+                        {
+                            model: BookChapterSubmission,
+                            as: 'submission',
+                            where: { bookTitle: bookTitle.title },
+                            attributes: ['id', 'status'],
+                            required: true,
+                        },
+                    ],
+                    order: [['updatedAt', 'DESC']],
+                });
+
+                // Compute submission status based on requirements
+                let submissionStatus: string | null = latestIC?.status ?? null;
+                const submissionLevelStatus = latestIC?.submission?.status;
+
+                // Priority check for submission-level phases
+                if (latestIC?.status === 'CHAPTER_APPROVED' && (
+                    submissionLevelStatus === 'PUBLISHED' || 
+                    submissionLevelStatus === 'PUBLICATION_IN_PROGRESS' || 
+                    submissionLevelStatus === 'ISBN_APPLIED'
+                )) {
+                    submissionStatus = submissionLevelStatus;
+                }
+
+                return {
+                    ...ch.toJSON(),
+                    submissionStatus,
+                    submissionId: latestIC?.submissionId ?? null,
+                };
+            })
+        );
+
         return res.status(200).json({
             success: true,
             message: 'Chapters retrieved successfully',
@@ -204,7 +245,7 @@ export const getChaptersByBookTitle = async (req: Request, res: Response) => {
                     id: bookTitle.id,
                     title: bookTitle.title,
                 },
-                chapters,
+                chapters: enriched,
             },
         });
     } catch (error: any) {

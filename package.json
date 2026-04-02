@@ -20,6 +20,7 @@
     "seed:generate": "sequelize-cli seed:generate --name",
     "backup:db": "bash scripts/backup-db.sh",
     "migrate:chapters": "ts-node src/scripts/migrateExistingSubmissions.ts",
+    "migrate:published": "ts-node src/scripts/migratePublishedDetails.ts",
     "lint": "eslint . --ext .ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
