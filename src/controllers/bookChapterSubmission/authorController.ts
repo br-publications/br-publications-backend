@@ -993,7 +993,7 @@ export const uploadFullChapter = async (req: AuthRequest, res: Response) => {
             'Full chapter uploaded successfully',
             201
         );
-    } catch (error) {
+    } catch (error: any) {
         if (transaction) {
             try {
                 await transaction.rollback();
@@ -1002,7 +1002,8 @@ export const uploadFullChapter = async (req: AuthRequest, res: Response) => {
             }
         }
         console.error('❌ Upload full chapter error:', error);
-        return sendError(res, 'Failed to upload full chapter', 500);
+        const detail = error.errors ? ` - ${JSON.stringify(error.errors)}` : '';
+        return sendError(res, `Failed to upload full chapter: ${error.message}${detail}`, 500);
     }
 };
 
@@ -1149,7 +1150,7 @@ export const submitRevision = async (req: AuthRequest, res: Response) => {
             `Revision ${submission.revisionCount} submitted successfully`,
             201
         );
-    } catch (error) {
+    } catch (error: any) {
         if (transaction) {
             try {
                 await transaction.rollback();
@@ -1158,7 +1159,8 @@ export const submitRevision = async (req: AuthRequest, res: Response) => {
             }
         }
         console.error('❌ Submit revision error:', error);
-        return sendError(res, 'Failed to submit revision', 500);
+        const detail = error.errors ? ` - ${JSON.stringify(error.errors)}` : '';
+        return sendError(res, `Failed to submit revision: ${error.message}${detail}`, 500);
     }
 };
 
