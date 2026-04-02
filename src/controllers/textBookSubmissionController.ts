@@ -283,7 +283,9 @@ export const submitTextBook = async (req: AuthRequest, res: Response) => {
             }
         }
         console.error('Submit text book error:', error);
-        return sendError(res, 'Failed to submit text book', 500);
+        // Surfacing the detailed error for debugging purposes on the live site
+        const detail = error.errors ? ` - ${JSON.stringify(error.errors)}` : '';
+        return sendError(res, `Failed to submit text book: ${error.message}${detail}`, 500);
     }
 };
 
