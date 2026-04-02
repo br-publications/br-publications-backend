@@ -15,22 +15,20 @@ const sequelize = new Sequelize(
     dialect: 'postgres',
     logging: false,
     pool: {
-      max: Number(process.env.DB_POOL_MAX) || 10,
-      min: Number(process.env.DB_POOL_MIN) || 0,
-      acquire: 60000, // Wait up to 60 seconds for a connection
+      max: 5,
+      min: 0,
+      acquire: 30000,
       idle: 10000,
-      evict: 1000,  // Periodically check for idle connections
     },
-    // KeepAlive to prevent "Connection terminated unexpectedly"
-    dialectOptions: {
-      ...(process.env.NODE_ENV === 'production' && {
+    // SSL connection for Render production environment
+    ...(process.env.NODE_ENV === 'production' && {
+      dialectOptions: {
         ssl: {
           require: true,
           rejectUnauthorized: false,
         },
-      }),
-      keepAlive: true,
-    },
+      },
+    }),
   }
 );
 
