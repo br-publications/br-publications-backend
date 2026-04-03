@@ -116,6 +116,11 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
 
     for (const key of Object.keys(frontmatter)) {
         const item = frontmatter[key];
+        // Skip items already in permanent storage — don't re-process
+        if (item && typeof item === 'object' && item.publishedFileId) {
+            console.log(`[PDF-Storage] Frontmatter "${key}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
+            continue;
+        }
         if (item && typeof item === 'object' && item.pdfKey) {
             try {
                 console.log(`[PDF-Storage] Moving Frontmatter "${key}" from temp to permanent storage...`);
@@ -1299,6 +1304,32 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
 
         const previousDoi = chapter.doi;
 
+        // Safely merge incoming frontmatterPdfs with existing DB data.
+        // The frontend may send stale data (with pdfKey) even after PDFs have already
+        // been promoted to permanent storage (publishedFileId). We protect against
+        // overwriting resolved publishedFileId references with stale pdfKey data.
+        let mergedFrontmatterPdfs: any = undefined;
+        if (frontmatterPdfs) {
+            const incoming = parseJsonField(frontmatterPdfs) || {};
+            const existing = (chapter.frontmatterPdfs as Record<string, any>) || {};
+
+            // For each key in incoming: if the existing entry already has a publishedFileId
+            // and the incoming entry does NOT, preserve the existing entry.
+            const merged: Record<string, any> = { ...existing };
+            for (const key of Object.keys(incoming)) {
+                const inc = incoming[key];
+                const ex = existing[key];
+                if (ex && ex.publishedFileId && inc && !inc.publishedFileId) {
+                    // Incoming is stale (pdfKey only) — keep the existing permanent reference
+                    console.log(`[Frontmatter-Merge] Preserving existing publishedFileId for key "${key}" — incoming data was stale.`);
+                    merged[key] = ex;
+                } else {
+                    merged[key] = inc;
+                }
+            }
+            mergedFrontmatterPdfs = await processTempPdfsForFrontmatter(merged);
+        }
+
         await chapter.update({
             ...(title && { title }),
             ...(author && { author }),
@@ -1318,7 +1349,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(tableContents && { tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)) }),
             ...(authorBiographies && { authorBiographies: parseJsonField(authorBiographies) }),
             ...(archives && { archives: parseJsonField(archives) }),
-            ...(frontmatterPdfs && { frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs)) }),
+            ...(mergedFrontmatterPdfs !== undefined && { frontmatterPdfs: mergedFrontmatterPdfs }),
             ...(mainAuthor && { mainAuthor: parseJsonField(mainAuthor) }),
             ...(coAuthorsData && { coAuthorsData: parseJsonField(coAuthorsData) }),
             ...(coverImage !== undefined && { coverImage }),
