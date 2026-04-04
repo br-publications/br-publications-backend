@@ -1932,8 +1932,8 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
             });
         }
 
-        // Return descriptive error to client ONLY in this diagnostic phase
-        return sendError(res, `Failed to submit proof: ${errorMessage} (${errorName})`, 500);
+        // Return standard error to client (reverting diagnostic verbose message)
+        return sendError(res, 'Failed to submit proof. Please try again later.', 500);
     }
 };
 

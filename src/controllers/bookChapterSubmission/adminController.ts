@@ -55,10 +55,16 @@ export const publishChapter = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Submission not found', 404);
         }
 
-        // Must be APPROVED status
-        if (submission.status !== BookChapterStatus.APPROVED) {
+        // Must be in a publishable status
+        const publishableStatuses = [
+            BookChapterStatus.APPROVED,
+            BookChapterStatus.ISBN_APPLIED,
+            BookChapterStatus.PUBLICATION_IN_PROGRESS
+        ];
+
+        if (!publishableStatuses.includes(submission.status)) {
             await transaction.rollback();
-            return sendError(res, 'Submission must be APPROVED before publishing', 400);
+            return sendError(res, `Submission must be APPROVED, ISBN_APPLIED, or PUBLICATION_IN_PROGRESS before publishing (current: ${submission.status})`, 400);
         }
 
         // Logic to create/update PublishedBook record or similar

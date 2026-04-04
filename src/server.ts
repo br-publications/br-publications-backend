@@ -181,6 +181,7 @@ const startServer = async () => {
     const ProjectInternshipSubmission = (await import('./models/projectInternshipSubmission')).default;
     const ContactInquiry = (await import('./models/contactInquiry')).default;
     const TemporaryUpload = (await import('./models/temporaryUpload')).default;
+    const LocalFile = (await import('./models/localFile')).default;
 
     // Relational publishing models
     const PublishedAuthor = (await import('./models/publishedAuthor')).default;
@@ -240,6 +241,7 @@ const startServer = async () => {
       PublishedAuthor,
       PublishedIndividualChapter,
       PublishedFile,
+      LocalFile,
     };
 
     // 2. Initialize each model (handle both 'initialize' and 'initModel' methods)
@@ -376,6 +378,10 @@ const startServer = async () => {
     app.use('/api/conferences', conferenceRoutes);
 
 
+
+    // Local File Management (Admin/Super Admin)
+    const localFileRoutes = (await import('./routes/admin/localFileRoutes')).default;
+    app.use('/api/admin/local-files', localFileRoutes);
 
     // SEO Routes (sitemap.xml and robots.txt — must be at root, NOT under /api/)
     const sitemapRoutes = (await import('./routes/sitemapRoutes')).default;

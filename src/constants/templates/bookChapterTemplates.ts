@@ -822,7 +822,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
                             <table width="100%" cellpadding="0" cellspacing="0">
                                 <tr>
                                     <td align="center">
-                                        <a href="{{frontendUrl}}/dashboard/editor/submissions"
+                                        <a href="{{frontendUrl}}dashboard/editor/submissions"
                                             style="background:#2563eb;color:#ffffff;padding:14px 28px;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;display:inline-block;">
                                             View Submission
                                         </a>
@@ -2369,7 +2369,7 @@ export const BOOK_CHAPTER_TEMPLATES = {
     </body>
     </html>
     `
-        },
+    },
     BOOK_CHAPTER_DOI_UPDATED: {
         subject: 'Important Update: DOI Assigned to {{bookTitle}}',
         variables: ['authorName', 'bookTitle', 'doi', 'isbn', 'link', 'currentYear'],

@@ -72,6 +72,11 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
     if (!Array.isArray(toc)) return toc;
 
     for (const item of toc) {
+        // Skip items already in permanent storage — don't re-process
+        if (item && typeof item === 'object' && item.publishedFileId) {
+            console.log(`[PDF-Storage] TOC Chapter "${item.title}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
+            continue;
+        }
         if (item && typeof item === 'object' && item.pdfKey) {
             try {
                 console.log(`[PDF-Storage] Moving TOC chapter "${item.title}" from temp to permanent storage...`);
@@ -596,12 +601,92 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             isFeatured: false,
         };
 
-        // Create or update the published_book_chapters record
+        // Fetch existing published chapter record (if any) to check for existing TOC data
         let publishedChapter = await PublishedBookChapter.findOne({
             where: { bookChapterSubmissionId: submissionId },
             transaction,
         });
 
+        // --- NEW: TOC Stale Data Protection ---
+        // If this is an update, merge existing publishedFileId references into the new TOC.
+        // This protects against the frontend sending back TOC items without their IDs.
+        if (publishedChapter && Array.isArray(bookData.tableContents)) {
+            const existingToc = parseJsonField(publishedChapter.tableContents) || [];
+            if (Array.isArray(existingToc)) {
+                console.log(`[TOC-Merge] Checking for stale chapter data in existing book ID: ${publishedChapter.id}`);
+                
+                for (const incoming of bookData.tableContents) {
+                    // If the incoming chapter is missing its publishedFileId, try to find it in the existing DB record
+                    if (incoming && !incoming.publishedFileId) {
+                        const existingMatch = existingToc.find((ex: any) => 
+                            ex.title?.trim().toLowerCase() === incoming.title?.trim().toLowerCase()
+                        );
+                        
+                        if (existingMatch && existingMatch.publishedFileId) {
+                            console.log(`[TOC-Merge] Restoring publishedFileId (${existingMatch.publishedFileId}) for chapter: "${incoming.title}"`);
+                            incoming.publishedFileId = existingMatch.publishedFileId;
+                            // Also restore pdfName if missing
+                            if (!incoming.pdfName) incoming.pdfName = existingMatch.pdfName;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- NEW: Strict TOC Validation ---
+        // Verify that every chapter in the Table of Contents actually has a valid submission.
+        const tocItems = bookData.tableContents || [];
+        if (tocItems.length > 0) {
+            console.log(`[Publishing-Validation] Checking ${tocItems.length} TOC chapters for valid submissions...`);
+            
+            // 1. Get all unique chapter titles from the TOC
+            const tocTitles = tocItems.map((item: any) => (item.title || '').trim()).filter(Boolean);
+            
+            // 2. Fetch all submissions for any of these titles for THIS book
+            // We reuse the broad orConditions logic from commonController to handle text/ID titles
+            const { resolveDisplayBookTitle } = await import('../bookChapterSubmission/commonController');
+            const bookTitleStr = await resolveDisplayBookTitle(submission.bookTitle);
+            
+            const allSubmissionsForBook = await BookChapterSubmission.findAll({
+                where: {
+                    [Op.or]: [
+                        { bookTitle: submission.bookTitle },
+                        { bookTitle: bookTitleStr }
+                    ],
+                    status: {
+                        [Op.in]: [
+                            BookChapterStatus.APPROVED,
+                            BookChapterStatus.ISBN_APPLIED,
+                            BookChapterStatus.PUBLICATION_IN_PROGRESS,
+                            BookChapterStatus.PUBLISHED
+                        ]
+                    }
+                },
+                transaction
+            });
+
+            // 3. Match TOC titles against found approved submissions
+            const approvedTitlesSet = new Set<string>();
+            allSubmissionsForBook.forEach(sub => {
+                (sub.bookChapterTitles || []).forEach(t => approvedTitlesSet.add(t.toLowerCase().trim()));
+            });
+
+            const missingTitles: string[] = [];
+            for (const tocTitle of tocTitles) {
+                if (!approvedTitlesSet.has(tocTitle.toLowerCase().trim())) {
+                    missingTitles.push(tocTitle);
+                }
+            }
+
+            if (missingTitles.length > 0) {
+                console.error(`❌ [Publishing-Validation] Failed. Missing approved submissions for: ${missingTitles.join(', ')}`);
+                await transaction.rollback();
+                return sendError(res, `Publication blocked: The following chapters do not have an APPROVED submission record: ${missingTitles.join(', ')}. Please ensure all chapters are approved before publishing the book.`, 400);
+            }
+            console.log(`[Publishing-Validation] ✅ All ${tocItems.length} TOC chapters verified.`);
+        }
+
+        // Create or update the published_book_chapters record
         if (publishedChapter) {
             await publishedChapter.update(bookData, { transaction });
         } else {
@@ -717,7 +802,18 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 if (btRecord) orConditions.push({ bookTitle: btRecord.id.toString() });
 
                 const relatedSubmissions = await BookChapterSubmission.findAll({
-                    where: { [Op.or]: orConditions, id: { [Op.ne]: submission.id } }
+                    where: { 
+                        [Op.or]: orConditions, 
+                        id: { [Op.ne]: submission.id },
+                        // Strictly only cascade to submissions that are in a "ready" state
+                        status: { 
+                            [Op.in]: [
+                                BookChapterStatus.APPROVED, 
+                                BookChapterStatus.ISBN_APPLIED, 
+                                BookChapterStatus.PUBLICATION_IN_PROGRESS
+                            ] 
+                        }
+                    }
                 });
 
                 for (const related of relatedSubmissions) {

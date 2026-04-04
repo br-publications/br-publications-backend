@@ -32,6 +32,7 @@ interface BookChapterReviewerAssignmentAttributes {
   recommendation: ReviewerRecommendation | null;
   reviewerComments: string | null;
   confidentialNotes: string | null;
+  assignmentRef: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -65,6 +66,7 @@ class BookChapterReviewerAssignment extends Model<
   public recommendation!: ReviewerRecommendation | null;
   public reviewerComments!: string | null;
   public confidentialNotes!: string | null;
+  public assignmentRef!: string | null;
 
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -191,6 +193,12 @@ class BookChapterReviewerAssignment extends Model<
         confidentialNotes: {
           type: DataTypes.TEXT,
           allowNull: true,
+          comment: 'Notes visible only to editor and admin',
+        },
+        assignmentRef: {
+          type: DataTypes.STRING(20),
+          allowNull: true,
+          unique: true,
         },
       },
       {
@@ -201,6 +209,13 @@ class BookChapterReviewerAssignment extends Model<
           beforeCreate: async (assignment: BookChapterReviewerAssignment) => {
             if (!assignment.assignedDate) {
               assignment.assignedDate = new Date();
+            }
+            
+            // Generate a human-readable unique reference if not provided
+            if (!assignment.assignmentRef) {
+              const crypto = require('crypto');
+              const randomPart = crypto.randomBytes(3).toString('hex').toUpperCase();
+              assignment.assignmentRef = `BCR-${randomPart}`; 
             }
           },
         },
