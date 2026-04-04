@@ -334,7 +334,6 @@ export const AUTH_TEMPLATES = {
                     <div class="otp-label">Your One-Time Password</div>
                     <div style="margin-bottom: 16px;">
                         <span class="otp-code">{{otp}}</span>
-                        <span class="copy-hint" title="Select and Copy">COPY</span>
                     </div>
                     <span class="otp-timer">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -591,7 +590,6 @@ Use the one-time password (OTP) below to securely reset your password.
 <div class="otp-label">Password Reset OTP</div>
 <div style="margin-bottom: 16px;">
     <span class="otp-code">{{otp}}</span>
-    <span class="copy-hint">COPY</span>
 </div>
 
 <span class="otp-timer">

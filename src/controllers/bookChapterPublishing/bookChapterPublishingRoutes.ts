@@ -35,12 +35,67 @@ const pdfUpload = multer({
 // Public routes (no auth required)
 // ============================================================
 
+/**
+ * @swagger
+ * tags:
+ *   name: Book Chapter Publishing
+ *   description: Public and Admin API for published book chapter management
+ */
+
+/**
+ * @swagger
+ * /api/book-chapter-publishing:
+ *   get:
+ *     summary: List all visible published chapters (paginated)
+ *     tags: [Book Chapter Publishing]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: category
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: List of published chapters
+ */
 /** GET /api/book-chapter-publishing - List all visible published chapters (paginated) */
 router.get('/', controller.getAllPublishedChapters);
 
+/**
+ * @swagger
+ * /api/book-chapter-publishing/categories:
+ *   get:
+ *     summary: Get unique category list
+ *     tags: [Book Chapter Publishing]
+ *     responses:
+ *       200:
+ *         description: Categories retrieved successfully
+ */
 /** GET /api/book-chapter-publishing/categories - Unique category list */
 router.get('/categories', controller.getCategories);
 
+/**
+ * @swagger
+ * /api/book-chapter-publishing/{id}:
+ *   get:
+ *     summary: Full detail of one published chapter
+ *     tags: [Book Chapter Publishing]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Chapter details
+ */
 /** GET /api/book-chapter-publishing/:id - Full detail of one published chapter */
 router.get('/:id', controller.getPublishedChapterById);
 
@@ -86,6 +141,28 @@ router.post(
     controller.uploadTempPdf,
 );
 
+/**
+ * @swagger
+ * /api/book-chapter-publishing/upload-temp-pdf:
+ *   post:
+ *     summary: Upload a single PDF file (wizard)
+ *     tags: [Book Chapter Publishing]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pdf:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Returns fileKey to use in publish payload
+ */
 /** POST /api/book-chapter-publishing/upload-temp-pdf
  *  Upload a single PDF file for a direct publication (no submission ID).
  */
@@ -98,6 +175,32 @@ router.post(
     controller.uploadTempPdf,
 );
 
+/**
+ * @swagger
+ * /api/book-chapter-publishing/{id}/publish:
+ *   post:
+ *     summary: Publish a submission (ID belongs to BookChapterSubmission)
+ *     tags: [Book Chapter Publishing]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               isbn: { type: string }
+ *               tableContents: { type: array, items: { type: object } }
+ *     responses:
+ *       200:
+ *         description: Book chapter published successfully
+ */
 /** POST /api/book-chapter-publishing/:id/publish
  *  Publish a submission (id = bookChapterSubmission.id).
  *  Body contains all wizard data including coverImage (base64) and
@@ -135,6 +238,23 @@ router.post(
     controller.checkBookChapterIsbnAvailability,
 );
 
+/**
+ * @swagger
+ * /api/book-chapter-publishing/{id}:
+ *   put:
+ *     summary: Update details of a published chapter
+ *     tags: [Book Chapter Publishing]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Chapter updated successfully
+ */
 /** PUT /api/book-chapter-publishing/:id - Update details of a published chapter */
 router.put(
     '/:id',
