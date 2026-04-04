@@ -80,7 +80,11 @@ const swaggerOptions = {
       },
     ],
   },
-  apis: ['./src/routes/*.ts', './src/server.ts'],
+  apis: [
+    './src/routes/**/*.ts',
+    './src/controllers/**/*.ts',
+    './src/server.ts'
+  ],
 };
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
