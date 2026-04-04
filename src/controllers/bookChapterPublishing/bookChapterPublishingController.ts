@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import path from 'path';
 import fs from 'fs';
 import { promisify } from 'util';
@@ -575,11 +575,12 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         if (
             submission.status !== BookChapterStatus.APPROVED &&
+            submission.status !== BookChapterStatus.ISBN_APPLIED &&
             submission.status !== BookChapterStatus.PUBLICATION_IN_PROGRESS &&
             submission.status !== BookChapterStatus.PUBLISHED
         ) {
             await transaction.rollback();
-            return sendError(res, 'Submission must be APPROVED, in PUBLICATION_IN_PROGRESS, or already PUBLISHED before publishing', 400);
+            return sendError(res, 'Submission must be in PUBLICATION_IN_PROGRESS before publishing', 400);
         }
 
 
@@ -666,14 +667,14 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             const existingToc = parseJsonField(publishedChapter.tableContents) || [];
             if (Array.isArray(existingToc)) {
                 console.log(`[TOC-Merge] Checking for stale chapter data in existing book ID: ${publishedChapter.id}`);
-                
+
                 for (const incoming of bookData.tableContents) {
                     // If the incoming chapter is missing its publishedFileId, try to find it in the existing DB record
                     if (incoming && !incoming.publishedFileId) {
-                        const existingMatch = existingToc.find((ex: any) => 
+                        const existingMatch = existingToc.find((ex: any) =>
                             ex.title?.trim().toLowerCase() === incoming.title?.trim().toLowerCase()
                         );
-                        
+
                         if (existingMatch && existingMatch.publishedFileId) {
                             console.log(`[TOC-Merge] Restoring publishedFileId (${existingMatch.publishedFileId}) for chapter: "${incoming.title}"`);
                             incoming.publishedFileId = existingMatch.publishedFileId;
@@ -690,15 +691,15 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
         const tocItems = bookData.tableContents || [];
         if (tocItems.length > 0) {
             console.log(`[Publishing-Validation] Checking ${tocItems.length} TOC chapters for valid submissions...`);
-            
+
             // 1. Get all unique chapter titles from the TOC
             const tocTitles = tocItems.map((item: any) => (item.title || '').trim()).filter(Boolean);
-            
+
             // 2. Fetch all submissions for any of these titles for THIS book
             // We reuse the broad orConditions logic from commonController to handle text/ID titles
             const { resolveDisplayBookTitle } = await import('../bookChapterSubmission/commonController');
             const bookTitleStr = await resolveDisplayBookTitle(submission.bookTitle);
-            
+
             const allSubmissionsForBook = await BookChapterSubmission.findAll({
                 where: {
                     [Op.or]: [
@@ -843,27 +844,27 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 }
 
                 // Find the BookTitle record to also match ID-stored submissions
-                const { Sequelize: Seq } = await import('sequelize');
                 const btRecord = await BookTitleModel.findOne({
-                    where: Seq.where(Seq.fn('LOWER', Seq.col('title')), textTitle.toLowerCase())
+                    where: Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('title')), textTitle.toLowerCase())
                 });
 
                 const orConditions: any[] = [
-                    Seq.where(Seq.fn('LOWER', Seq.col('bookTitle')), textTitle.toLowerCase()),
+                    Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('bookTitle')), textTitle.toLowerCase()),
                 ];
                 if (btRecord) orConditions.push({ bookTitle: btRecord.id.toString() });
 
                 const relatedSubmissions = await BookChapterSubmission.findAll({
-                    where: { 
-                        [Op.or]: orConditions, 
+                    where: {
+                        [Op.or]: orConditions,
                         id: { [Op.ne]: submission.id },
-                        // Strictly only cascade to submissions that are in a "ready" state
-                        status: { 
+                        // Strictly only cascade to submissions that are in a "ready" state or already published
+                        status: {
                             [Op.in]: [
-                                BookChapterStatus.APPROVED, 
-                                BookChapterStatus.ISBN_APPLIED, 
-                                BookChapterStatus.PUBLICATION_IN_PROGRESS
-                            ] 
+                                BookChapterStatus.APPROVED,
+                                BookChapterStatus.ISBN_APPLIED,
+                                BookChapterStatus.PUBLICATION_IN_PROGRESS,
+                                BookChapterStatus.PUBLISHED
+                            ]
                         }
                     }
                 });
@@ -893,11 +894,20 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         // --- Mark matching book_chapters rows as published (non-blocking) ---
         const tocList = parseJsonField(tableContents) || [];
-        const tocTitles: string[] = tocList.map((c: any) => c.title).filter(Boolean);
+        const tocTitles: string[] = tocList.map((c: any) => c.title ? c.title.trim().toLowerCase() : null).filter(Boolean);
         if (tocTitles.length > 0) {
             BookChapter.update(
                 { isPublished: true },
-                { where: { chapterTitle: { [Op.in]: tocTitles } } }
+                {
+                    where: {
+                        [Op.or]: tocTitles.map(title => 
+                            Sequelize.where(
+                                Sequelize.fn('LOWER', Sequelize.fn('TRIM', Sequelize.col('chapterTitle'))),
+                                title
+                            )
+                        )
+                    }
+                }
             ).catch((err: any) => console.error('❌ Error marking chapters as published:', err));
         }
 
