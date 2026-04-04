@@ -72,29 +72,48 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
     if (!Array.isArray(toc)) return toc;
 
     for (const item of toc) {
-        // Skip items already in permanent storage — don't re-process
-        if (item && typeof item === 'object' && item.publishedFileId) {
+        if (!item || typeof item !== 'object') continue;
+
+        const hasNewData = item.pdfKey || (item.pdfData && typeof item.pdfData === 'string' && item.pdfData.startsWith('data:application/pdf;base64,'));
+
+        // Skip items already in permanent storage IF they don't have new data
+        if (item.publishedFileId && !hasNewData) {
             console.log(`[PDF-Storage] TOC Chapter "${item.title}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
             continue;
         }
 
         // Option 1: Process from pdfKey (TemporaryUpload)
-        if (item && typeof item === 'object' && item.pdfKey) {
+        if (item.pdfKey) {
             try {
                 console.log(`[PDF-Storage] Moving TOC chapter "${item.title}" from temp to permanent storage...`);
                 const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
                 if (tempUpload) {
-                    // 1. Create a permanent PublishedFile record
-                    const pubFile = await PublishedFile.create({
-                        fileData: tempUpload.fileData,
-                        fileName: tempUpload.fileName,
-                        mimeType: tempUpload.mimeType,
-                        fileSize: tempUpload.fileData.length,
-                        category: 'CHAPTER'
-                    }, { transaction });
+                    let pubFile;
+                    if (item.publishedFileId) {
+                        pubFile = await PublishedFile.findByPk(item.publishedFileId);
+                    }
+                    if (pubFile) {
+                        await pubFile.update({
+                            fileData: tempUpload.fileData,
+                            fileName: tempUpload.fileName,
+                            mimeType: tempUpload.mimeType,
+                            fileSize: tempUpload.fileData.length,
+                        }, { transaction });
+                        console.log(`[PDF-Storage] ✅ Updated permanent TOC chapter PDF in place. File ID: ${pubFile.id}`);
+                    } else {
+                        // 1. Create a permanent PublishedFile record
+                        pubFile = await PublishedFile.create({
+                            fileData: tempUpload.fileData,
+                            fileName: tempUpload.fileName,
+                            mimeType: tempUpload.mimeType,
+                            fileSize: tempUpload.fileData.length,
+                            category: 'CHAPTER'
+                        }, { transaction });
+                        item.publishedFileId = pubFile.id;
+                        console.log(`[PDF-Storage] ✅ Created permanent TOC chapter PDF in DB. File ID: ${pubFile.id}`);
+                    }
 
                     // 2. Link by ID
-                    item.publishedFileId = pubFile.id;
                     item.pdfName = tempUpload.fileName; // Keep the name for easy display
 
                     // Cleanup temp reference
@@ -103,33 +122,45 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
 
                     // Delete temp upload after processing
                     await tempUpload.destroy({ transaction });
-                    console.log(`[PDF-Storage] ✅ Moved TOC chapter PDF to DB. File ID: ${pubFile.id}`);
                 }
             } catch (e) {
                 console.error('❌ Error processing temp PDF for TOC:', e);
             }
         }
         // Option 2: Process from direct base64 pdfData
-        else if (item && typeof item === 'object' && item.pdfData && typeof item.pdfData === 'string' && item.pdfData.startsWith('data:application/pdf;base64,')) {
+        else if (item.pdfData && typeof item.pdfData === 'string' && item.pdfData.startsWith('data:application/pdf;base64,')) {
             try {
                 console.log(`[PDF-Storage] Processing base64 TOC chapter "${item.title}"...`);
                 const base64Data = item.pdfData.replace(/^data:application\/pdf;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
                 const fileName = item.pdfName || `${item.title.substring(0, 20)}.pdf`;
 
-                const pubFile = await PublishedFile.create({
-                    fileData: buffer,
-                    fileName: fileName,
-                    mimeType: 'application/pdf',
-                    fileSize: buffer.length,
-                    category: 'CHAPTER'
-                }, { transaction });
+                let pubFile;
+                if (item.publishedFileId) {
+                    pubFile = await PublishedFile.findByPk(item.publishedFileId);
+                }
+                if (pubFile) {
+                    await pubFile.update({
+                        fileData: buffer,
+                        fileName: fileName,
+                        mimeType: 'application/pdf',
+                        fileSize: buffer.length,
+                    }, { transaction });
+                    console.log(`[PDF-Storage] ✅ Updated permanent record from base64 for TOC chapter in place. File ID: ${pubFile.id}`);
+                } else {
+                    pubFile = await PublishedFile.create({
+                        fileData: buffer,
+                        fileName: fileName,
+                        mimeType: 'application/pdf',
+                        fileSize: buffer.length,
+                        category: 'CHAPTER'
+                    }, { transaction });
+                    item.publishedFileId = pubFile.id;
+                    console.log(`[PDF-Storage] ✅ Created permanent record from base64 for TOC chapter in DB. File ID: ${pubFile.id}`);
+                }
 
-                item.publishedFileId = pubFile.id;
                 item.pdfName = fileName;
                 delete item.pdfData; // Cleanup large base64 string
-
-                console.log(`[PDF-Storage] ✅ Created permanent record from base64 for TOC chapter. File ID: ${pubFile.id}`);
             } catch (e) {
                 console.error('❌ Error processing base64 PDF for TOC:', e);
             }
@@ -146,29 +177,48 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
 
     for (const key of Object.keys(frontmatter)) {
         const item = frontmatter[key];
-        // Skip items already in permanent storage — don't re-process
-        if (item && typeof item === 'object' && item.publishedFileId) {
+        if (!item || typeof item !== 'object') continue;
+
+        const hasNewData = item.pdfKey || (item.data && typeof item.data === 'string' && item.data.startsWith('data:application/pdf;base64,'));
+
+        // Skip items already in permanent storage IF they don't have new data
+        if (item.publishedFileId && !hasNewData) {
             console.log(`[PDF-Storage] Frontmatter "${key}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
             continue;
         }
 
         // Option 1: Process from pdfKey (TemporaryUpload)
-        if (item && typeof item === 'object' && item.pdfKey) {
+        if (item.pdfKey) {
             try {
                 console.log(`[PDF-Storage] Moving Frontmatter "${key}" from temp to permanent storage...`);
                 const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
                 if (tempUpload) {
-                    // 1. Create a permanent PublishedFile record
-                    const pubFile = await PublishedFile.create({
-                        fileData: tempUpload.fileData,
-                        fileName: tempUpload.fileName,
-                        mimeType: tempUpload.mimeType,
-                        fileSize: tempUpload.fileData.length,
-                        category: 'FRONTMATTER'
-                    }, { transaction });
+                    let pubFile;
+                    if (item.publishedFileId) {
+                        pubFile = await PublishedFile.findByPk(item.publishedFileId);
+                    }
+                    if (pubFile) {
+                        await pubFile.update({
+                            fileData: tempUpload.fileData,
+                            fileName: tempUpload.fileName,
+                            mimeType: tempUpload.mimeType,
+                            fileSize: tempUpload.fileData.length,
+                        }, { transaction });
+                        console.log(`[PDF-Storage] ✅ Updated permanent Frontmatter PDF in place. File ID: ${pubFile.id}`);
+                    } else {
+                        // 1. Create a permanent PublishedFile record
+                        pubFile = await PublishedFile.create({
+                            fileData: tempUpload.fileData,
+                            fileName: tempUpload.fileName,
+                            mimeType: tempUpload.mimeType,
+                            fileSize: tempUpload.fileData.length,
+                            category: 'FRONTMATTER'
+                        }, { transaction });
+                        item.publishedFileId = pubFile.id;
+                        console.log(`[PDF-Storage] ✅ Created permanent Frontmatter PDF in DB. File ID: ${pubFile.id}`);
+                    }
 
                     // 2. Update metadata
-                    item.publishedFileId = pubFile.id;
                     item.name = tempUpload.fileName;
 
                     delete item.pdfKey;
@@ -176,33 +226,45 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
 
                     // Delete temp upload after processing
                     await tempUpload.destroy({ transaction });
-                    console.log(`[PDF-Storage] ✅ Moved Frontmatter PDF to DB. File ID: ${pubFile.id}`);
                 }
             } catch (e) {
                 console.error('❌ Error processing temp PDF for Frontmatter:', e);
             }
         }
         // Option 2: Process from direct base64 data
-        else if (item && typeof item === 'object' && item.data && typeof item.data === 'string' && item.data.startsWith('data:application/pdf;base64,')) {
+        else if (item.data && typeof item.data === 'string' && item.data.startsWith('data:application/pdf;base64,')) {
             try {
                 console.log(`[PDF-Storage] Processing base64 Frontmatter "${key}"...`);
                 const base64Data = item.data.replace(/^data:application\/pdf;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
                 const fileName = item.name || `${key.substring(0, 20)}.pdf`;
 
-                const pubFile = await PublishedFile.create({
-                    fileData: buffer,
-                    fileName: fileName,
-                    mimeType: 'application/pdf',
-                    fileSize: buffer.length,
-                    category: 'FRONTMATTER'
-                }, { transaction });
+                let pubFile;
+                if (item.publishedFileId) {
+                    pubFile = await PublishedFile.findByPk(item.publishedFileId);
+                }
+                if (pubFile) {
+                    await pubFile.update({
+                        fileData: buffer,
+                        fileName: fileName,
+                        mimeType: 'application/pdf',
+                        fileSize: buffer.length,
+                    }, { transaction });
+                    console.log(`[PDF-Storage] ✅ Updated permanent record from base64 for Frontmatter "${key}" in place. File ID: ${pubFile.id}`);
+                } else {
+                    pubFile = await PublishedFile.create({
+                        fileData: buffer,
+                        fileName: fileName,
+                        mimeType: 'application/pdf',
+                        fileSize: buffer.length,
+                        category: 'FRONTMATTER'
+                    }, { transaction });
+                    item.publishedFileId = pubFile.id;
+                    console.log(`[PDF-Storage] ✅ Created permanent record from base64 for Frontmatter "${key}" in DB. File ID: ${pubFile.id}`);
+                }
 
-                item.publishedFileId = pubFile.id;
                 item.name = fileName;
                 delete item.data; // Cleanup large base64 string
-
-                console.log(`[PDF-Storage] ✅ Created permanent record from base64 for Frontmatter "${key}". File ID: ${pubFile.id}`);
             } catch (e) {
                 console.error('❌ Error processing base64 PDF for Frontmatter:', e);
             }
@@ -854,6 +916,16 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         await transaction.commit();
 
+        // Clear disk cache to ensure fresh updated files are fetched
+        const cacheDirToClear = path.resolve(process.cwd(), 'uploads/published_cache', publishedChapter.id.toString());
+        if (fs.existsSync(cacheDirToClear)) {
+            try {
+                fs.rmSync(cacheDirToClear, { recursive: true, force: true });
+                console.log(`[Cache-Clear] Wiped cached PDFs for published book ID: ${publishedChapter.id}`);
+            } catch (err) {
+                console.error(`❌ [Cache-Clear] Error wiping cache for book ${publishedChapter.id}:`, err);
+            }
+        }
         // --- Cascade PUBLISHED status to all other submissions for the same book title (non-blocking) ---
         const bookTitleValue = submission.bookTitle;
         (async () => {
@@ -1108,6 +1180,17 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
 
 
         await transaction.commit();
+
+        // Clear disk cache to ensure fresh updated files are fetched
+        const cacheDirToClear = path.resolve(process.cwd(), 'uploads/published_cache', publishedChapter.id.toString());
+        if (fs.existsSync(cacheDirToClear)) {
+            try {
+                fs.rmSync(cacheDirToClear, { recursive: true, force: true });
+                console.log(`[Cache-Clear] Wiped cached PDFs for direct published book ID: ${publishedChapter.id}`);
+            } catch (err) {
+                console.error(`❌ [Cache-Clear] Error wiping cache for book ${publishedChapter.id}:`, err);
+            }
+        }
 
         // --- Note: Removed auto-marking as published as this is an individual chapter publish ---
 
@@ -1550,6 +1633,16 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
 
         await transaction.commit();
 
+        // Clear disk cache to ensure fresh updated files are fetched
+        const cacheDirToClear = path.resolve(process.cwd(), 'uploads/published_cache', chapter.id.toString());
+        if (fs.existsSync(cacheDirToClear)) {
+            try {
+                fs.rmSync(cacheDirToClear, { recursive: true, force: true });
+                console.log(`[Cache-Clear] Wiped cached PDFs for updated book ID: ${chapter.id}`);
+            } catch (err) {
+                console.error(`❌ [Cache-Clear] Error wiping cache for book ${chapter.id}:`, err);
+            }
+        }
         // Check if DOI was newly added and trigger notifications (non-blocking, outside transaction)
         if (!previousDoi && doi && doi.trim() !== '') {
             sendBookChapterDoiUpdatedNotifications(chapter.id).catch((err: any) =>

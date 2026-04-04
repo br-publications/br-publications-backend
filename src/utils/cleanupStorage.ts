@@ -24,33 +24,50 @@ export const cleanupStorage = async () => {
             console.log(`🧹 Cleaned up ${deletedRows} expired database entries from TemporaryUpload.`);
         }
 
-        // 2. Clean up Disk (uploads/temp)
-        if (fs.existsSync(TEMP_UPLOAD_DIR)) {
-            const files = fs.readdirSync(TEMP_UPLOAD_DIR);
-            const now = Date.now();
-            const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+        // 2. Clean up Disk (uploads/temp AND uploads/published_cache)
+        const now = Date.now();
+        const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
 
-            let deletedFilesCount = 0;
+        const cleanupRecursive = (dirPath: string): number => {
+            let deletedCount = 0;
+            if (!fs.existsSync(dirPath)) return 0;
 
+            const files = fs.readdirSync(dirPath);
             for (const file of files) {
-                const filePath = path.join(TEMP_UPLOAD_DIR, file);
+                const fullPath = path.join(dirPath, file);
                 try {
-                    const stats = fs.statSync(filePath);
-                    const age = now - stats.mtime.getTime();
-
-                    // Delete files older than 5 days
-                    if (age > FIVE_DAYS_MS && stats.isFile()) {
-                        fs.unlinkSync(filePath);
-                        deletedFilesCount++;
+                    const stats = fs.statSync(fullPath);
+                    if (stats.isDirectory()) {
+                        deletedCount += cleanupRecursive(fullPath);
+                        // Try to remove empty directory
+                        try {
+                            if (fs.readdirSync(fullPath).length === 0) {
+                                fs.rmdirSync(fullPath);
+                            }
+                        } catch (e) {}
+                    } else if (stats.isFile()) {
+                        const age = now - stats.mtime.getTime();
+                        if (age > FIVE_DAYS_MS) {
+                            fs.unlinkSync(fullPath);
+                            deletedCount++;
+                        }
                     }
                 } catch (err) {
-                    console.error(`❌ Error checking/deleting file ${file}:`, err);
+                    console.error(`❌ Error checking/deleting file ${fullPath}:`, err);
                 }
             }
+            return deletedCount;
+        };
 
-            if (deletedFilesCount > 0) {
-                console.log(`🧹 Cleaned up ${deletedFilesCount} old files from disk (${TEMP_UPLOAD_DIR}).`);
-            }
+        const tempDeleted = cleanupRecursive(TEMP_UPLOAD_DIR);
+        if (tempDeleted > 0) {
+            console.log(`🧹 Cleaned up ${tempDeleted} old files from disk (${TEMP_UPLOAD_DIR}).`);
+        }
+
+        const PUBLISHED_CACHE_DIR = path.resolve('uploads/published_cache');
+        const cacheDeleted = cleanupRecursive(PUBLISHED_CACHE_DIR);
+        if (cacheDeleted > 0) {
+            console.log(`🧹 Cleaned up ${cacheDeleted} old files from disk (${PUBLISHED_CACHE_DIR}).`);
         }
 
         // 3. Clean up Expired Local Admin Files (LocalFile)
