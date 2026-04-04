@@ -1810,7 +1810,15 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
         const submissionId = parseInt(req.params.id);
         const proofFile = req.file;
 
+        console.log(`[SubmitProof] Request for submissionId: ${submissionId}, User: ${user?.id} (${user?.fullName})`);
+        if (proofFile) {
+            console.log(`[SubmitProof] File: ${proofFile.originalname}, Size: ${proofFile.size} bytes, Mime: ${proofFile.mimetype}`);
+        } else {
+            console.warn(`[SubmitProof] No file attached to request`);
+        }
+
         if (!user || (!user.hasRole(UserRole.EDITOR) && !user.hasRole(UserRole.ADMIN))) {
+            console.warn(`[SubmitProof] Access denied for user role: ${user?.role}`);
             await transaction.rollback();
             return sendError(res, 'Editor or Admin access required', 403);
         }
@@ -1822,6 +1830,7 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
 
         const submission = await BookChapterSubmission.findByPk(submissionId, { transaction });
         if (!submission) {
+            console.warn(`[SubmitProof] Submission ${submissionId} not found`);
             await transaction.rollback();
             return sendError(res, 'Submission not found', 404);
         }
@@ -1831,10 +1840,12 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
         const isAdminOrDev = user.hasRole(UserRole.ADMIN) || user.hasRole(UserRole.DEVELOPER);
 
         if (!isAssignedEditor && !isAdminOrDev) {
+            console.warn(`[SubmitProof] User ${user.id} not authorized for submission ${submissionId}`);
             await transaction.rollback();
             return sendError(res, 'You are not authorized to send proof for this submission', 403);
         }
 
+        console.log(`[SubmitProof] Saving proof document to database...`);
         // Save file
         const fileRecord = await BookChapterFile.create({
             submissionId: submission.id,
@@ -1847,10 +1858,14 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
             isActive: true,
         }, { transaction });
 
+        console.log(`[SubmitProof] File saved successfully. File ID: ${fileRecord.id}`);
+
         // Update submission
         submission.proofStatus = 'SENT';
         submission.lastUpdatedBy = user.id;
         await submission.save({ transaction });
+
+        console.log(`[SubmitProof] Submission updated. Status: SENT`);
 
         await BookChapterStatusHistory.create({
             submissionId: submission.id,
@@ -1863,6 +1878,7 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
         }, { transaction });
 
         await transaction.commit();
+        console.log(`[SubmitProof] Transaction committed successfully`);
 
         // Notify author
         const displayBookTitle = await resolveDisplayBookTitle(submission.bookTitle);
@@ -1875,20 +1891,25 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
             message: `The editor has sent the proof for "${displayBookTitle}" for your review. Please confirm or request changes.`,
             relatedEntityId: submission.id,
             relatedEntityType: 'BookChapterSubmission',
-        }).catch(console.error);
+        }).catch(err => console.error('[SubmitProof] Notification error:', err));
 
         // Send email notification to authors
         try {
             const submitterForEmail = await User.findByPk(submission.submittedBy);
             await notifyAuthorsProofSent(submission, submitterForEmail, { bookTitle: displayBookTitle });
+            console.log(`[SubmitProof] Email notification sent successfully`);
         } catch (emailError) {
-            console.error('❌ Error sending proof sent email:', emailError);
+            console.error('❌ [SubmitProof] Error sending proof sent email:', emailError);
         }
 
         return sendSuccess(res, { submission, file: fileRecord }, 'Proof sent to author successfully');
     } catch (error) {
-        await transaction.rollback();
-        console.error('❌ Submit proof error:', error);
+        if (transaction) await transaction.rollback();
+        console.error('❌ [SubmitProof] CRITICAL ERROR:', error);
+        // Log more detail if it's a sequelize error
+        if (error && (error as any).name) {
+            console.error(`[SubmitProof] Error Name: ${(error as any).name}`);
+        }
         return sendError(res, 'Failed to submit proof', 500);
     }
 };

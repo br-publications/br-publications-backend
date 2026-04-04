@@ -253,7 +253,7 @@ export const sendBookChapterEditorAssignedEmail = async (
         <p><strong>Chapters:</strong> ${data.chapters}</p>
         <p><strong>${assignedByLabel}</strong> ${data.assignedBy}</p>
       </div>
-      <p><a href="${FRONTEND_URL}dashboard/editor" style="background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Submission</a></p>
+      <p><a href="${FRONTEND_URL}dashboard/editor/submissions" style="background: #2196F3; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">View Submission</a></p>
       <p style="color: #666; font-size: 14px;">This is an automated notification from BR Publications.</p>
     </div>`;
 
