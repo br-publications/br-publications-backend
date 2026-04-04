@@ -474,11 +474,33 @@ module.exports = {
     <p><strong>Chapters:</strong> {{chapters}}</p>
     <p><strong>Assigned by:</strong> {{assignedBy}}</p>
   </div>
-  <p><a href="{{frontendUrl}}/dashboard/editor" style="background:#2196F3;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">View Submission</a></p>
+  <p><a href="{{frontendUrl}}/dashboard/editor/submissions" style="background:#2196F3;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">View Submission</a></p>
   <p style="color:#666;font-size:14px;">This is an automated notification from BR Publications.</p>
 </div>`,
         variables: JSON.stringify(['editorName', 'authorName', 'bookTitle', 'chapters', 'assignedBy', 'frontendUrl']),
         description: 'Sent to Editor when assigned to a book chapter submission',
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
+      },
+      {
+        code: 'BOOK_CHAPTER_EDITOR_SELECTED_BY_AUTHOR',
+        type: 'EMAIL',
+        subject: 'New Editor Selection: {{bookTitle}}',
+        content: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+  <h2>Hello {{editorName}},</h2>
+  <p>You have been selected as editor for a book chapter submission.</p>
+  <div style="background:#f9f9f9;border-left:4px solid #2196F3;padding:20px;margin:20px 0;">
+    <h3 style="margin-top:0;">{{bookTitle}}</h3>
+    <p><strong>Author:</strong> {{authorName}}</p>
+    <p><strong>Chapters:</strong> {{chapters}}</p>
+    <p><strong>Selected by:</strong> {{assignedBy}}</p>
+  </div>
+  <p><a href="{{frontendUrl}}/dashboard/editor/submissions" style="background:#2196F3;color:white;padding:12px 24px;text-decoration:none;border-radius:4px;display:inline-block;">View Submission</a></p>
+  <p style="color:#666;font-size:14px;">This is an automated notification from BR Publications.</p>
+</div>`,
+        variables: JSON.stringify(['editorName', 'authorName', 'bookTitle', 'chapters', 'assignedBy', 'frontendUrl']),
+        description: 'Sent to Editor when they are selected by an author for a book chapter submission',
         is_active: true,
         created_at: new Date(),
         updated_at: new Date()
