@@ -77,6 +77,8 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
             console.log(`[PDF-Storage] TOC Chapter "${item.title}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
             continue;
         }
+
+        // Option 1: Process from pdfKey (TemporaryUpload)
         if (item && typeof item === 'object' && item.pdfKey) {
             try {
                 console.log(`[PDF-Storage] Moving TOC chapter "${item.title}" from temp to permanent storage...`);
@@ -95,11 +97,9 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
                     item.publishedFileId = pubFile.id;
                     item.pdfName = tempUpload.fileName; // Keep the name for easy display
 
-                    // 3. Keep pdfData (base64) for backward compatibility if needed (deprecated)
-                    item.pdfData = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`;
-
                     // Cleanup temp reference
                     delete item.pdfKey;
+                    delete item.pdfData; // No longer needed as we have publishedFileId
 
                     // Delete temp upload after processing
                     await tempUpload.destroy({ transaction });
@@ -107,6 +107,31 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
                 }
             } catch (e) {
                 console.error('❌ Error processing temp PDF for TOC:', e);
+            }
+        }
+        // Option 2: Process from direct base64 pdfData
+        else if (item && typeof item === 'object' && item.pdfData && typeof item.pdfData === 'string' && item.pdfData.startsWith('data:application/pdf;base64,')) {
+            try {
+                console.log(`[PDF-Storage] Processing base64 TOC chapter "${item.title}"...`);
+                const base64Data = item.pdfData.replace(/^data:application\/pdf;base64,/, '');
+                const buffer = Buffer.from(base64Data, 'base64');
+                const fileName = item.pdfName || `${item.title.substring(0, 20)}.pdf`;
+
+                const pubFile = await PublishedFile.create({
+                    fileData: buffer,
+                    fileName: fileName,
+                    mimeType: 'application/pdf',
+                    fileSize: buffer.length,
+                    category: 'CHAPTER'
+                }, { transaction });
+
+                item.publishedFileId = pubFile.id;
+                item.pdfName = fileName;
+                delete item.pdfData; // Cleanup large base64 string
+
+                console.log(`[PDF-Storage] ✅ Created permanent record from base64 for TOC chapter. File ID: ${pubFile.id}`);
+            } catch (e) {
+                console.error('❌ Error processing base64 PDF for TOC:', e);
             }
         }
     }
@@ -126,6 +151,8 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
             console.log(`[PDF-Storage] Frontmatter "${key}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
             continue;
         }
+
+        // Option 1: Process from pdfKey (TemporaryUpload)
         if (item && typeof item === 'object' && item.pdfKey) {
             try {
                 console.log(`[PDF-Storage] Moving Frontmatter "${key}" from temp to permanent storage...`);
@@ -143,9 +170,9 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
                     // 2. Update metadata
                     item.publishedFileId = pubFile.id;
                     item.name = tempUpload.fileName;
-                    item.data = `data:${tempUpload.mimeType};base64,${tempUpload.fileData.toString('base64')}`; // Keep base64 for now
 
                     delete item.pdfKey;
+                    delete item.data; // Cleanup if exists
 
                     // Delete temp upload after processing
                     await tempUpload.destroy({ transaction });
@@ -153,6 +180,31 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
                 }
             } catch (e) {
                 console.error('❌ Error processing temp PDF for Frontmatter:', e);
+            }
+        }
+        // Option 2: Process from direct base64 data
+        else if (item && typeof item === 'object' && item.data && typeof item.data === 'string' && item.data.startsWith('data:application/pdf;base64,')) {
+            try {
+                console.log(`[PDF-Storage] Processing base64 Frontmatter "${key}"...`);
+                const base64Data = item.data.replace(/^data:application\/pdf;base64,/, '');
+                const buffer = Buffer.from(base64Data, 'base64');
+                const fileName = item.name || `${key.substring(0, 20)}.pdf`;
+
+                const pubFile = await PublishedFile.create({
+                    fileData: buffer,
+                    fileName: fileName,
+                    mimeType: 'application/pdf',
+                    fileSize: buffer.length,
+                    category: 'FRONTMATTER'
+                }, { transaction });
+
+                item.publishedFileId = pubFile.id;
+                item.name = fileName;
+                delete item.data; // Cleanup large base64 string
+
+                console.log(`[PDF-Storage] ✅ Created permanent record from base64 for Frontmatter "${key}". File ID: ${pubFile.id}`);
+            } catch (e) {
+                console.error('❌ Error processing base64 PDF for Frontmatter:', e);
             }
         }
     }
@@ -1382,12 +1434,25 @@ export const getChapterPdf = async (req: Request, res: Response) => {
  * @access Admin
  */
 export const updatePublishedChapter = async (req: AuthRequest, res: Response) => {
+    const sequelize = PublishedBookChapter.sequelize;
+    if (!sequelize) {
+        return sendError(res, 'Database connection not initialized', 500);
+    }
+
+    const transaction = await sequelize.transaction();
+
     try {
         const id = parseInt(req.params.id);
-        if (isNaN(id)) return sendError(res, 'Invalid ID', 400);
+        if (isNaN(id)) {
+            await transaction.rollback();
+            return sendError(res, 'Invalid ID', 400);
+        }
 
-        const chapter = await PublishedBookChapter.findByPk(id);
-        if (!chapter) return sendError(res, 'Published book chapter not found', 404);
+        const chapter = await PublishedBookChapter.findByPk(id, { transaction });
+        if (!chapter) {
+            await transaction.rollback();
+            return sendError(res, 'Published book chapter not found', 404);
+        }
 
         const {
             title, author, coAuthors, category, description,
@@ -1401,29 +1466,23 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
         const previousDoi = chapter.doi;
 
         // Safely merge incoming frontmatterPdfs with existing DB data.
-        // The frontend may send stale data (with pdfKey) even after PDFs have already
-        // been promoted to permanent storage (publishedFileId). We protect against
-        // overwriting resolved publishedFileId references with stale pdfKey data.
         let mergedFrontmatterPdfs: any = undefined;
         if (frontmatterPdfs) {
             const incoming = parseJsonField(frontmatterPdfs) || {};
             const existing = (chapter.frontmatterPdfs as Record<string, any>) || {};
 
-            // For each key in incoming: if the existing entry already has a publishedFileId
-            // and the incoming entry does NOT, preserve the existing entry.
             const merged: Record<string, any> = { ...existing };
             for (const key of Object.keys(incoming)) {
                 const inc = incoming[key];
                 const ex = existing[key];
                 if (ex && ex.publishedFileId && inc && !inc.publishedFileId) {
-                    // Incoming is stale (pdfKey only) — keep the existing permanent reference
                     console.log(`[Frontmatter-Merge] Preserving existing publishedFileId for key "${key}" — incoming data was stale.`);
                     merged[key] = ex;
                 } else {
                     merged[key] = inc;
                 }
             }
-            mergedFrontmatterPdfs = await processTempPdfsForFrontmatter(merged);
+            mergedFrontmatterPdfs = await processTempPdfsForFrontmatter(merged, transaction);
         }
 
         await chapter.update({
@@ -1442,7 +1501,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(pricing && { pricing: parseJsonField(pricing) }),
             ...(synopsis && { synopsis: parseJsonField(synopsis) }),
             ...(scope && { scope: parseJsonField(scope) }),
-            ...(tableContents && { tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents)) }),
+            ...(tableContents && { tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction) }),
             ...(authorBiographies && { authorBiographies: parseJsonField(authorBiographies) }),
             ...(archives && { archives: parseJsonField(archives) }),
             ...(mergedFrontmatterPdfs !== undefined && { frontmatterPdfs: mergedFrontmatterPdfs }),
@@ -1453,9 +1512,11 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(flipkartLink !== undefined && { flipkartLink }),
             ...(amazonLink !== undefined && { amazonLink }),
             ...(keywords !== undefined && { keywords }),
-        });
+        }, { transaction });
 
-        // Check if DOI was newly added and trigger notifications
+        await transaction.commit();
+
+        // Check if DOI was newly added and trigger notifications (non-blocking, outside transaction)
         if (!previousDoi && doi && doi.trim() !== '') {
             sendBookChapterDoiUpdatedNotifications(chapter.id).catch((err: any) =>
                 console.error('❌ Error sending DOI update notifications:', err)
@@ -1465,6 +1526,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
         return sendSuccess(res, chapter, 'Published book chapter updated successfully');
 
     } catch (error) {
+        if (transaction) await transaction.rollback();
         console.error('❌ updatePublishedChapter error:', error);
         return sendError(res, 'Failed to update published book chapter', 500);
     }
