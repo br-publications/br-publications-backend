@@ -153,11 +153,28 @@ export const AUTH_TEMPLATES = {
 
         .otp-code {
             font-size: 48px;
-            font-family: 'DM Serif Display', serif;
+            font-family: 'Courier New', Courier, monospace;
             color: #0f0f0f;
             letter-spacing: 0.18em;
             line-height: 1;
             margin-bottom: 16px;
+            cursor: copy;
+            -webkit-user-select: all;
+            user-select: all;
+        }
+
+        .copy-hint {
+            display: inline-block;
+            vertical-align: middle;
+            background: #ffffff;
+            border: 1px solid #d1d1d1;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 10px;
+            color: #999999;
+            margin-left: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
         }
 
         .otp-timer {
@@ -313,10 +330,12 @@ export const AUTH_TEMPLATES = {
                     complete your verification. This code is unique to you and should not be shared with anyone.
                 </p>
 
-                <!-- OTP -->
                 <div class="otp-section">
                     <div class="otp-label">Your One-Time Password</div>
-                    <div class="otp-code">{{otp}}</div>
+                    <div style="margin-bottom: 16px;">
+                        <span class="otp-code">{{otp}}</span>
+                        <span class="copy-hint" title="Select and Copy">COPY</span>
+                    </div>
                     <span class="otp-timer">
                         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <circle cx="12" cy="12" r="10" stroke="#8a6400" stroke-width="2" />
@@ -440,11 +459,28 @@ margin-bottom:14px;
 
 .otp-code{
 font-size:48px;
-font-family:'DM Serif Display',serif;
+font-family:'Courier New', Courier, monospace;
 color:#0f0f0f;
 letter-spacing:0.18em;
 line-height:1;
 margin-bottom:16px;
+cursor: copy;
+-webkit-user-select: all;
+user-select: all;
+}
+
+.copy-hint {
+display: inline-block;
+vertical-align: middle;
+background: #ffffff;
+border: 1px solid #d1d1d1;
+border-radius: 4px;
+padding: 4px 8px;
+font-size: 10px;
+color: #999999;
+margin-left: 10px;
+font-weight: 600;
+text-transform: uppercase;
 }
 
 .otp-timer{
@@ -553,7 +589,10 @@ Use the one-time password (OTP) below to securely reset your password.
 
 <div class="otp-section">
 <div class="otp-label">Password Reset OTP</div>
-<div class="otp-code">{{otp}}</div>
+<div style="margin-bottom: 16px;">
+    <span class="otp-code">{{otp}}</span>
+    <span class="copy-hint">COPY</span>
+</div>
 
 <span class="otp-timer">
 ⏱ Expires in 10 minutes

@@ -2,6 +2,7 @@ import { Op } from 'sequelize';
 import path from 'path';
 import fs from 'fs';
 import TemporaryUpload from '../models/temporaryUpload';
+import LocalFile from '../models/localFile';
 
 const TEMP_UPLOAD_DIR = path.resolve('uploads/temp');
 
@@ -50,6 +51,31 @@ export const cleanupStorage = async () => {
             if (deletedFilesCount > 0) {
                 console.log(`🧹 Cleaned up ${deletedFilesCount} old files from disk (${TEMP_UPLOAD_DIR}).`);
             }
+        }
+
+        // 3. Clean up Expired Local Admin Files (LocalFile)
+        const expiredLocalFiles = await LocalFile.findAll({
+            where: {
+                expiresAt: {
+                    [Op.lt]: new Date(),
+                },
+            },
+        });
+
+        for (const localFile of expiredLocalFiles) {
+            try {
+                const filePath = path.join(process.cwd(), localFile.filePath.startsWith('/') ? localFile.filePath.substring(1) : localFile.filePath);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
+                await localFile.destroy();
+            } catch (err) {
+                console.error(`❌ Error cleaning up expired local file ${localFile.fileName}:`, err);
+            }
+        }
+
+        if (expiredLocalFiles.length > 0) {
+            console.log(`🧹 Cleaned up ${expiredLocalFiles.length} expired local admin files.`);
         }
     } catch (error) {
         console.error('❌ Error in cleanupStorage:', error);

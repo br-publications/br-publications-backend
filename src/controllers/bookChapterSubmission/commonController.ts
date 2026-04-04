@@ -893,10 +893,10 @@ export const getSubmissionsByBookTitle = async (req: AuthRequest, res: Response)
         const user = req.authenticatedUser;
         if (!user) return sendError(res, 'User not authenticated', 401);
 
-        const { title } = req.query as { title?: string };
+        const { title, onlyPublishable } = req.query as { title?: string, onlyPublishable?: string };
         if (!title?.trim()) return sendError(res, 'Book title is required', 400);
 
-        // If title is numeric, treat it as a BookTitle ID and resolve the text title first
+        const isPublishingMode = onlyPublishable === 'true';
         let bookTitleText = title.trim();
         const possibleId = parseInt(bookTitleText);
         if (!isNaN(possibleId) && bookTitleText === possibleId.toString()) {
@@ -928,8 +928,15 @@ export const getSubmissionsByBookTitle = async (req: AuthRequest, res: Response)
             whereConditions.push({ bookTitle: bookTitleRecord.id.toString() });
         }
 
+        const where: any = { [Op.or]: whereConditions };
+        
+        // If in publishing mode, exclude rejected or withdrawn submissions
+        if (isPublishingMode) {
+            where.status = { [Op.notIn]: [BookChapterStatus.REJECTED] };
+        }
+
         const submissions = await BookChapterSubmission.findAll({
-            where: { [Op.or]: whereConditions },
+            where,
             include: [
                 {
                     model: User,
@@ -937,7 +944,20 @@ export const getSubmissionsByBookTitle = async (req: AuthRequest, res: Response)
                     attributes: ['id', 'fullName', 'email'],
                 },
             ],
-            order: [['submissionDate', 'ASC']],
+            order: [
+                // Prioritize APPROVED and PUBLICATION_IN_PROGRESS statuses for easier selection
+                [
+                    Sequelize.literal(`CASE 
+                        WHEN status = '${BookChapterStatus.APPROVED}' THEN 1
+                        WHEN status = '${BookChapterStatus.ISBN_APPLIED}' THEN 2
+                        WHEN status = '${BookChapterStatus.PUBLICATION_IN_PROGRESS}' THEN 3
+                        WHEN status = '${BookChapterStatus.REJECTED}' THEN 5
+                        ELSE 4 
+                    END`), 
+                    'ASC'
+                ],
+                ['submissionDate', 'DESC']
+            ],
         });
 
         return sendSuccess(res, { submissions, bookTitle: bookTitleText }, 'Submissions retrieved successfully');
