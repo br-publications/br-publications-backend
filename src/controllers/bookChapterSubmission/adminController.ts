@@ -15,6 +15,7 @@ import PublishedBook from '../../models/publishedBook';
 import BookChapterReviewerAssignment, { ReviewerAssignmentStatus } from '../../models/bookChapterReviewerAssignment';
 import IndividualChapter, { ChapterStatus } from '../../models/individualChapter'; // Import if needed for stats
 import DeliveryAddress from '../../models/deliveryAddress';
+import BookChapter from '../../models/bookChapter';
 
 import { resolveDisplayBookTitle } from './commonController';
 
@@ -59,12 +60,13 @@ export const publishChapter = async (req: AuthRequest, res: Response) => {
         const publishableStatuses = [
             BookChapterStatus.APPROVED,
             BookChapterStatus.ISBN_APPLIED,
-            BookChapterStatus.PUBLICATION_IN_PROGRESS
+            BookChapterStatus.PUBLICATION_IN_PROGRESS,
+            BookChapterStatus.PUBLISHED
         ];
 
         if (!publishableStatuses.includes(submission.status)) {
             await transaction.rollback();
-            return sendError(res, `Submission must be APPROVED, ISBN_APPLIED, or PUBLICATION_IN_PROGRESS before publishing (current: ${submission.status})`, 400);
+            return sendError(res, `Submission must be APPROVED, ISBN_APPLIED, PUBLICATION_IN_PROGRESS, or already PUBLISHED before publishing (current: ${submission.status})`, 400);
         }
 
         // Logic to create/update PublishedBook record or similar
@@ -143,6 +145,25 @@ export const publishChapter = async (req: AuthRequest, res: Response) => {
         );
 
         await transaction.commit();
+
+        // --- Mark matching book_chapters rows as published (non-blocking) ---
+        const chapterTitles = submission.bookChapterTitles || [];
+        const normalizedTitles = chapterTitles.map((t: string) => t ? t.trim().toLowerCase() : null).filter(Boolean);
+        if (normalizedTitles.length > 0) {
+            BookChapter.update(
+                { isPublished: true },
+                { 
+                    where: {
+                        [Op.or]: normalizedTitles.map(title => 
+                            Sequelize.where(
+                                Sequelize.fn('LOWER', Sequelize.fn('TRIM', Sequelize.col('chapterTitle'))),
+                                title
+                            )
+                        )
+                    }
+                }
+            ).catch((err: any) => console.error('❌ Error marking chapters as published (Admin):', err));
+        }
 
         // Notifications
         const displayBookTitle = await resolveDisplayBookTitle(submission.bookTitle);
