@@ -1845,7 +1845,18 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'You are not authorized to send proof for this submission', 403);
         }
 
-        console.log(`[SubmitProof] Saving proof document to database...`);
+        console.log(`[SubmitProof] Saving proof document to database: ${proofFile.originalname} (${proofFile.size} bytes)`);
+
+        // Extra validation for file metadata lengths (Sequelize limits)
+        if (proofFile.originalname.length > 255) {
+            await transaction.rollback();
+            return sendError(res, `Filename too long: ${proofFile.originalname.length} characters (Max 255)`, 400);
+        }
+        if (proofFile.mimetype.length > 100) {
+            await transaction.rollback();
+            return sendError(res, `MIME type too long: ${proofFile.mimetype.length} characters (Max 100)`, 400);
+        }
+
         // Save file
         const fileRecord = await BookChapterFile.create({
             submissionId: submission.id,
@@ -1903,14 +1914,26 @@ export const submitProof = async (req: AuthRequest, res: Response) => {
         }
 
         return sendSuccess(res, { submission, file: fileRecord }, 'Proof sent to author successfully');
-    } catch (error) {
+    } catch (error: any) {
         if (transaction) await transaction.rollback();
         console.error('❌ [SubmitProof] CRITICAL ERROR:', error);
-        // Log more detail if it's a sequelize error
-        if (error && (error as any).name) {
-            console.error(`[SubmitProof] Error Name: ${(error as any).name}`);
+        
+        // Extract useful error details
+        const errorName = error?.name || 'UnknownError';
+        const errorMessage = error?.message || 'Internal Server Error during proof submission';
+        
+        console.error(`[SubmitProof] Error Name: ${errorName}`);
+        console.error(`[SubmitProof] Error Message: ${errorMessage}`);
+        
+        // Log Sequelize detailed errors if available
+        if (error.errors && Array.isArray(error.errors)) {
+            error.errors.forEach((e: any, idx: number) => {
+                console.error(`[SubmitProof] Validation Error ${idx + 1}: ${e.path} - ${e.message}`);
+            });
         }
-        return sendError(res, 'Failed to submit proof', 500);
+
+        // Return descriptive error to client ONLY in this diagnostic phase
+        return sendError(res, `Failed to submit proof: ${errorMessage} (${errorName})`, 500);
     }
 };
 
