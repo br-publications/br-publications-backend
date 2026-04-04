@@ -697,15 +697,28 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
             // 2. Fetch all submissions for any of these titles for THIS book
             // We reuse the broad orConditions logic from commonController to handle text/ID titles
-            const { resolveDisplayBookTitle } = await import('../bookChapterSubmission/commonController');
-            const bookTitleStr = await resolveDisplayBookTitle(submission.bookTitle);
+            let textTitle = String(submission.bookTitle);
+            const { default: BookTitleModel } = await import('../../models/bookTitle');
+            const parsedId = parseInt(textTitle);
+            if (!isNaN(parsedId) && textTitle.trim() === parsedId.toString()) {
+                const bt = await BookTitleModel.findByPk(parsedId);
+                if (bt) textTitle = bt.title;
+            }
+
+            const { Sequelize: Seq } = await import('sequelize');
+            const btRecord = await BookTitleModel.findOne({
+                where: Seq.where(Seq.fn('LOWER', Seq.col('title')), textTitle.toLowerCase()),
+                transaction
+            });
+
+            const orConditions: any[] = [
+                Seq.where(Seq.fn('LOWER', Seq.col('bookTitle')), textTitle.toLowerCase())
+            ];
+            if (btRecord) orConditions.push({ bookTitle: btRecord.id.toString() });
 
             const allSubmissionsForBook = await BookChapterSubmission.findAll({
                 where: {
-                    [Op.or]: [
-                        { bookTitle: submission.bookTitle },
-                        { bookTitle: bookTitleStr }
-                    ],
+                    [Op.or]: orConditions,
                     status: {
                         [Op.in]: [
                             BookChapterStatus.APPROVED,
@@ -718,10 +731,21 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 transaction
             });
 
-            // 3. Match TOC titles against found approved submissions
+            // 3. Match TOC titles against found approved submissions' actual chapter titles
             const approvedTitlesSet = new Set<string>();
-            allSubmissionsForBook.forEach(sub => {
-                (sub.bookChapterTitles || []).forEach(t => approvedTitlesSet.add(t.toLowerCase().trim()));
+            
+            const validSubmissionIds = allSubmissionsForBook.map((s: any) => s.id);
+            if (validSubmissionIds.length > 0) {
+                const IndividualChapter = (await import('../../models/individualChapter')).default;
+                const actualChapters = await IndividualChapter.findAll({
+                    where: { submissionId: { [Op.in]: validSubmissionIds } },
+                    transaction
+                });
+                actualChapters.forEach((c: any) => approvedTitlesSet.add(c.chapterTitle.toLowerCase().trim()));
+            }
+
+            allSubmissionsForBook.forEach((sub: any) => {
+                (sub.bookChapterTitles || []).forEach((t: string) => approvedTitlesSet.add(t.toLowerCase().trim()));
             });
 
             const missingTitles: string[] = [];
