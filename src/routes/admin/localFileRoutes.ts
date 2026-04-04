@@ -178,4 +178,44 @@ router.delete('/:id', controller.deleteLocalFile);
  */
 router.delete('/details/:submissionId/:fileName', controller.deleteLocalFileByDetails);
 
+/**
+ * @swagger
+ * /api/admin/local-files/physical:
+ *   get:
+ *     summary: List all physical files in the uploads folder (recursive)
+ *     tags: [AdminLocalFiles]
+ *     parameters:
+ *       - in: query
+ *         name: folder
+ *         schema:
+ *           type: string
+ *         description: Optional sub-folder to scan (e.g. published_cache)
+ *     responses:
+ *       200:
+ *         description: Disk file list retrieved
+ */
+router.get('/physical', controller.getPhysicalUploads);
+
+/**
+ * @swagger
+ * /api/admin/local-files/physical:
+ *   delete:
+ *     summary: Physically delete a file from server storage by its path
+ *     tags: [AdminLocalFiles]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               filePath:
+ *                 type: string
+ *                 description: Relative path from the 'uploads' folder
+ *     responses:
+ *       200:
+ *         description: File removed from disk
+ */
+router.delete('/physical', controller.deletePhysicalUpload);
+
 export default router;
