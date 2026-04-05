@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import sgMail from '@sendgrid/mail';
+import { Resend } from 'resend';
 
 /**
  * Categories for different email purposes
@@ -150,6 +151,43 @@ const sendEmailViaSendGrid = async (
     console.log(`✅ SendGrid email sent successfully to ${to}. StatusCode: ${response.statusCode}`);
 };
 
+const sendEmailViaResend = async (
+    to: string,
+    subject: string,
+    html: string,
+    text?: string
+): Promise<void> => {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        throw new Error('RESEND_API_KEY is required when EMAIL_PROVIDER=resend');
+    }
+
+    const resend = new Resend(apiKey);
+    const from = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+    if (!from) {
+        throw new Error('EMAIL_FROM or EMAIL_USER is required for Resend');
+    }
+
+    // Resend strictly requires a correctly formatted "from" address if you want a name
+    // Example: "BR Publications <support@yourdomain.com>"
+    // If from is just an email, we wrap it properly.
+    const formattedFrom = from.includes('<') ? from : `BR Publications <${from}>`;
+
+    const { data, error } = await resend.emails.send({
+        from: formattedFrom,
+        to: [to],
+        subject,
+        html,
+        text: text || html.replace(/<[^>]*>/g, ''),
+    });
+
+    if (error) {
+        throw new Error(`Resend Error: ${error.message}`);
+    }
+
+    console.log(`✅ Resend email sent successfully to ${to}. MessageId: ${data?.id}`);
+};
+
 /**
  * Base email sending function — updated to support categories.
  */
@@ -164,6 +202,11 @@ export const sendEmail = async (
     try {
         if (emailProvider === 'sendgrid') {
             await sendEmailViaSendGrid(to, subject, html, text);
+            return;
+        }
+
+        if (emailProvider === 'resend') {
+            await sendEmailViaResend(to, subject, html, text);
             return;
         }
 
