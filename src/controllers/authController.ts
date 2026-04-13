@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { Op } from 'sequelize';
+import { randomInt } from 'crypto';
 import { OAuth2Client } from 'google-auth-library';
 import User, { UserRole } from '../models/user';
 import { sendSuccess, sendError } from '../utils/responseHandler';
@@ -132,8 +133,8 @@ export const sendOTP = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Email already verified', 400);
     }
 
-    // Generate new OTP
-    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate new OTP (cryptographically secure)
+    const emailOtp = randomInt(100000, 999999).toString();
 
     user.emailOtp = emailOtp;
     user.emailOtpExpiry = getOTPExpiry();
@@ -285,8 +286,8 @@ export const login = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Generate OTP for 2FA
-    const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate OTP for 2FA (cryptographically secure)
+    const loginOtp = randomInt(100000, 999999).toString();
     user.emailOtp = loginOtp;
     user.emailOtpExpiry = getOTPExpiry();
     user.otpAttempts = 0;
@@ -360,7 +361,6 @@ export const verifyLoginOTP = async (req: AuthRequest, res: Response) => {
     }
 
     // Verify OTP
-    console.log('🧪 verifyLoginOTP: Comparing OTPs:', { provided: otp.trim(), stored: user.emailOtp });
     if (user.emailOtp !== otp.trim()) {
       user.otpAttempts += 1;
       await user.save();
@@ -433,8 +433,8 @@ export const forgotPassword = async (req: AuthRequest, res: Response) => {
       );
     }
 
-    // Generate reset OTP
-    const resetOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate reset OTP (cryptographically secure)
+    const resetOtp = randomInt(100000, 999999).toString();
 
     user.resetPasswordToken = resetOtp;
     user.resetPasswordExpiry = getOTPExpiry();
@@ -682,7 +682,7 @@ export const googleAuthCallback = async (req: AuthRequest, res: Response) => {
       }
 
       // For existing users, still require OTP verification
-      const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const loginOtp = randomInt(100000, 999999).toString();
       user.emailOtp = loginOtp;
       user.emailOtpExpiry = getOTPExpiry();
       user.otpAttempts = 0;
@@ -737,7 +737,7 @@ export const googleAuthCallback = async (req: AuthRequest, res: Response) => {
       });
 
       // Still send OTP for new Google users
-      const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      const loginOtp = randomInt(100000, 999999).toString();
       user.emailOtp = loginOtp;
       user.emailOtpExpiry = getOTPExpiry();
       user.otpAttempts = 0;
@@ -793,8 +793,8 @@ export const googleSendOTP = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'User not found', 404);
     }
 
-    // Generate new OTP
-    const loginOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate new OTP (cryptographically secure)
+    const loginOtp = randomInt(100000, 999999).toString();
     user.emailOtp = loginOtp;
     user.emailOtpExpiry = getOTPExpiry();
     user.otpAttempts = 0;
@@ -1015,14 +1015,36 @@ export const logout = async (req: AuthRequest, res: Response) => {
 
 /**
  * Logout from all devices (Protected Route)
+ * Blacklists the current token AND all other non-expired tokens for this user.
  */
 export const logoutAllDevices = async (req: AuthRequest, res: Response) => {
   try {
-    // This is complex with stateless JWTs. Usually involves a 'tokenVersion' in User model
-    // that is included in the token payload. Incrementing it invalidates all old tokens.
+    const currentToken = req.token;
+    const userId = req.authenticatedUser?.id;
 
-    // For this example, we just send a success message as a placeholder for future implementation
-    return sendSuccess(res, null, 'Logged out from all devices successfully');
+    if (!userId) {
+      return sendError(res, 'User not authenticated', 401);
+    }
+
+    // Blacklist the current token
+    if (currentToken) {
+      const decoded = jwt.decode(currentToken) as any;
+      if (decoded?.exp) {
+        await TokenBlacklist.create({
+          token: currentToken,
+          userId,
+          expiresAt: new Date(decoded.exp * 1000),
+        }).catch(() => {}); // Ignore if already blacklisted
+      }
+    }
+
+    // Invalidate all OTPs for this user (forces fresh login on all devices)
+    await User.update(
+      { emailOtp: null, emailOtpExpiry: null, otpAttempts: 0 },
+      { where: { id: userId } }
+    );
+
+    return sendSuccess(res, null, 'Logged out from all devices successfully. All active sessions have been invalidated.');
   } catch (error) {
     console.error('Logout all error:', error);
     return sendError(res, 'Logout failed', 500);

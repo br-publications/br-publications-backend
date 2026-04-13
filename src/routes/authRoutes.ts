@@ -24,6 +24,13 @@ import {
   validateForgotPassword,
 } from '../middleware/validation';
 import { authenticate, requireVerified } from '../middleware/auth';
+import {
+  loginLimiter,
+  otpSendLimiter,
+  otpVerifyLimiter,
+  registerLimiter,
+  passwordResetLimiter,
+} from '../middleware/rateLimiter';
 
 const router = express.Router();
 
@@ -80,7 +87,7 @@ const router = express.Router();
  *       409:
  *         description: Email or username already registered
  */
-router.post('/register', register);
+router.post('/register', registerLimiter, register);
 
 /**
  * @swagger
@@ -106,7 +113,7 @@ router.post('/register', register);
  *       404:
  *         description: User not found
  */
-router.post('/send-otp', sendOTP);
+router.post('/send-otp', otpSendLimiter, sendOTP);
 
 /**
  * @swagger
@@ -138,7 +145,7 @@ router.post('/send-otp', sendOTP);
  *       404:
  *         description: User not found
  */
-router.post('/verify-email', validateOTP, verifyEmail);
+router.post('/verify-email', otpVerifyLimiter, validateOTP, verifyEmail);
 
 /**
  * @swagger
@@ -170,7 +177,7 @@ router.post('/verify-email', validateOTP, verifyEmail);
  *       403:
  *         description: Account not verified or deactivated
  */
-router.post('/login', validateLogin, login);
+router.post('/login', loginLimiter, validateLogin, login);
 
 /**
  * @swagger
@@ -202,7 +209,7 @@ router.post('/login', validateLogin, login);
  *       404:
  *         description: User not found
  */
-router.post('/verify-login-otp', validateOTP, verifyLoginOTP);
+router.post('/verify-login-otp', otpVerifyLimiter, validateOTP, verifyLoginOTP);
 
 /**
  * @swagger
@@ -228,7 +235,7 @@ router.post('/verify-login-otp', validateOTP, verifyLoginOTP);
  *       404:
  *         description: User not found
  */
-router.post('/forgot-password', validateForgotPassword, forgotPassword);
+router.post('/forgot-password', passwordResetLimiter, validateForgotPassword, forgotPassword);
 
 /**
  * @swagger
@@ -258,7 +265,7 @@ router.post('/forgot-password', validateForgotPassword, forgotPassword);
  *       400:
  *         description: Invalid or expired OTP
  */
-router.post('/verify-reset-otp', validateOTP, verifyResetOTP);
+router.post('/verify-reset-otp', otpVerifyLimiter, validateOTP, verifyResetOTP);
 
 /**
  * @swagger
@@ -292,7 +299,7 @@ router.post('/verify-reset-otp', validateOTP, verifyResetOTP);
  *       400:
  *         description: Validation error or invalid OTP
  */
-router.post('/reset-password', validatePasswordReset, resetPassword);
+router.post('/reset-password', passwordResetLimiter, validatePasswordReset, resetPassword);
 
 // ===========================
 // GOOGLE OAUTH ROUTES
@@ -362,7 +369,7 @@ router.post('/google/callback', googleAuthCallback);
  *       404:
  *         description: User not found
  */
-router.post('/google/send-otp', googleSendOTP);
+router.post('/google/send-otp', otpSendLimiter, googleSendOTP);
 
 /**
  * @swagger
@@ -392,7 +399,7 @@ router.post('/google/send-otp', googleSendOTP);
  *       401:
  *         description: Unauthorized
  */
-router.post('/google/verify-otp', googleVerifyOTP);
+router.post('/google/verify-otp', otpVerifyLimiter, googleVerifyOTP);
 
 // ===========================
 // PROTECTED ROUTES (Require Authentication)

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/user';
+import TokenBlacklist from '../models/tokenBlacklist';
 import { sendError } from '../utils/responseHandler';
 
 // Extend the Express Request interface to include the authenticated user
@@ -59,6 +60,12 @@ export const authenticate = async (
         return sendError(res, 'Invalid token. Please login again.', 401);
       }
       throw error;
+    }
+
+    // Check if token has been blacklisted (logged out)
+    const blacklisted = await TokenBlacklist.findOne({ where: { token } });
+    if (blacklisted) {
+      return sendError(res, 'Token has been revoked. Please login again.', 401);
     }
 
     // Fetch the full user instance from database
