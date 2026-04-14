@@ -105,6 +105,11 @@ router.get('/authors', controller.getAllPublishedAuthors);
 /** GET /api/book-chapter-publishing/authors/:id - Author detail with chapters */
 router.get('/authors/:id', controller.getPublishedAuthorById);
 
+/** GET /api/book-chapter-publishing/editors - List all editors */
+router.get('/editors', controller.getAllPublishedEditors);
+
+/** GET /api/book-chapter-publishing/editors/:id - Editor detail with books */
+router.get('/editors/:id', controller.getPublishedEditorById);
 
 /** GET /api/book-chapter-publishing/:id/cover - Serve cover image binary */
 router.get('/:id/cover', controller.getChapterCover);

@@ -1,10 +1,12 @@
-import { QueryInterface, DataTypes } from 'sequelize';
+'use strict';
 
-export default {
-    async up(queryInterface: QueryInterface): Promise<void> {
+/** @type {import('sequelize-cli').Migration} */
+module.exports = {
+    async up(queryInterface, Sequelize) {
+        const { DataTypes } = Sequelize;
         const table = await queryInterface.describeTable('book_chapters');
-        if (!table.is_published) {
-            await queryInterface.addColumn('book_chapters', 'is_published', {
+        if (!table.is_published && !table.isPublished) {
+            await queryInterface.addColumn('book_chapters', 'isPublished', {
                 type: DataTypes.BOOLEAN,
                 allowNull: false,
                 defaultValue: false,
@@ -12,7 +14,7 @@ export default {
         }
     },
 
-    async down(queryInterface: QueryInterface): Promise<void> {
+    async down(queryInterface, Sequelize) {
         const table = await queryInterface.describeTable('book_chapters');
         if (table.is_published) {
             await queryInterface.removeColumn('book_chapters', 'is_published');

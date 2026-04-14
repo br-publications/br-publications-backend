@@ -5,6 +5,7 @@ console.log('🚀 Server starting...');
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import cors from 'cors';
+import helmet from 'helmet';
 import { Sequelize } from 'sequelize';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJsdoc from 'swagger-jsdoc';
@@ -12,6 +13,15 @@ import { startTokenCleanup } from './utils/cleanupTokens';
 import { startStorageCleanup } from './utils/cleanupStorage';
 import { startMonthlyReportScheduler } from './utils/monthlyReportScheduler';
 import { seedSuperAdmin } from './utils/superAdminSeeder';
+import {
+  generalLimiter,
+  loginLimiter,
+  otpSendLimiter,
+  otpVerifyLimiter,
+  registerLimiter,
+  passwordResetLimiter,
+  contactFormLimiter,
+} from './middleware/rateLimiter';
 // import sequelize from './config/database';
 
 const app: Application = express();
@@ -93,22 +103,63 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// Middleware
+// ── Security Middleware ──────────────────────────────────────────────────────
+
+// Helmet sets secure HTTP headers (XSS protection, clickjacking, MIME sniffing, etc.)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allow images/assets from other origins
+  contentSecurityPolicy: false, // Disable CSP here — configure separately if needed
+}));
+
+// Remove X-Powered-By header (prevent Express fingerprinting)
+app.disable('x-powered-by');
+
+// CORS - Parses comma-separated environments and permits localhost testing
+const rawOrigins = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const allowedOrigins = rawOrigins.split(',').map(o => o.trim());
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is explicitly allowed or is a local debugging origin
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
   credentials: true,
 }));
-app.use(express.json({ limit: '100mb' }));
-app.use(express.urlencoded({ limit: '100mb', extended: true }));
+
+/**
+ * BODY LIMITS:
+ * express.json / urlencoded is only for JSON and form data — it does NOT affect
+ * multipart file uploads. Multer handles those separately with its own fileSize limit.
+ * Reducing this from 100MB to 10MB prevents JSON-based DoS attacks while
+ * keeping all PDF/file upload workflows fully intact.
+ */
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Static file serving for uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
+// General rate limiter — applied to all API routes
+app.use('/api/', generalLimiter);
 
 // Debug logging middleware
 app.use((req, res, next) => {
   next();
 });
 
-// Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// Swagger documentation — ONLY available in non-production environments
+// In production, remove ENABLE_SWAGGER=true from .env or set NODE_ENV=production
+if (process.env.NODE_ENV !== 'production' || process.env.ENABLE_SWAGGER === 'true') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  console.info('📚 Swagger UI available at /api-docs');
+}
 
 /**
  * @swagger
@@ -298,27 +349,6 @@ const startServer = async () => {
       } catch (syncErr) {
         console.error('❌ Auto-sync templates failed on startup:', syncErr);
       }
-    }
-
-    // Auto-run DB hotfixes (Enums, Table structures, etc.)
-    try {
-      console.log('🔧 Running automated DB hotfixes...');
-      const { fixEnum } = await import('./scripts/fix_enum');
-      const { fixEnums } = await import('./scripts/hotfix_all_enums');
-      const { fixTable } = await import('./scripts/hotfix_book_chapter_files');
-      const { fixPublishedChaptersTable } = await import('./scripts/hotfix_published_book_chapters');
-      const { fixPublishedFiles } = await import('./scripts/hotfix_published_files');
-      const { migratePublishedDetails } = await import('./scripts/migratePublishedDetails');
-
-      await fixEnum(sequelize);
-      await fixEnums(sequelize);
-      await fixTable(sequelize);
-      await fixPublishedChaptersTable(sequelize);
-      await fixPublishedFiles(sequelize);
-      await migratePublishedDetails(sequelize);
-      console.log('✅ Automated DB hotfixes completed successfully.');
-    } catch (hotfixErr) {
-      console.error('❌ Automated DB hotfixes failed:', hotfixErr);
     }
 
     // Import routes AFTER models are loaded

@@ -1,12 +1,14 @@
 import express from 'express';
 import * as authMiddleware from '../middleware/auth';
 import * as contactInquiryController from '../controllers/contactInquiryController';
+import { contactFormLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
-// Submit contact inquiry — PUBLIC (no auth required)
+// Submit contact inquiry — PUBLIC (no auth required, rate-limited)
 router.post(
     '/submit',
+    contactFormLimiter,
     contactInquiryController.submitContactInquiry
 );
 

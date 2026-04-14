@@ -70,6 +70,7 @@ export interface PublishedBookChapterAttributes {
     flipkartLink: string | null;
     amazonLink: string | null;
     frontmatterPdfs: Record<string, { data?: string; mimeType?: string; name?: string; }> | null;
+    editorBiographies: AuthorBiography[] | null;
 
     // Display flags
     isHidden: boolean;
@@ -119,6 +120,7 @@ class PublishedBookChapter
     public flipkartLink!: string | null;
     public amazonLink!: string | null;
     public frontmatterPdfs!: Record<string, { data?: string; mimeType?: string; name?: string; }> | null;
+    public editorBiographies!: AuthorBiography[] | null;
     public isHidden!: boolean;
     public isFeatured!: boolean;
 
@@ -265,6 +267,11 @@ class PublishedBookChapter
                     allowNull: true,
                     defaultValue: null,
                 },
+                editorBiographies: {
+                    type: DataTypes.JSONB,
+                    allowNull: true,
+                    defaultValue: null,
+                },
                 isHidden: {
                     type: DataTypes.BOOLEAN,
                     allowNull: false,
@@ -298,6 +305,15 @@ class PublishedBookChapter
             PublishedBookChapter.hasMany(models.PublishedIndividualChapter, {
                 foreignKey: 'publishedBookChapterId',
                 as: 'chapters',
+            });
+        }
+        if (models.PublishedEditor) {
+            PublishedBookChapter.belongsToMany(models.PublishedEditor, {
+                through: 'published_book_editors',
+                foreignKey: 'published_book_chapter_id',
+                otherKey: 'published_editor_id',
+                as: 'biographyEditors',
+                timestamps: true
             });
         }
     }

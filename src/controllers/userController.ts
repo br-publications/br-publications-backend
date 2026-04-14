@@ -1,5 +1,6 @@
 import { Response } from 'express';
 import { Op } from 'sequelize';
+import { randomInt } from 'crypto';
 import User, { UserRole } from '../models/user';
 import { sendSuccess, sendError } from '../utils/responseHandler';
 import { AuthRequest } from '../middleware/auth';
@@ -735,8 +736,8 @@ export const resendEmailVerificationOTP = async (req: AuthRequest, res: Response
       }
     }
 
-    // Generate new OTP
-    const emailOtp = user.generateOTP();
+    // Generate new OTP (cryptographically secure)
+    const emailOtp = randomInt(100000, 999999).toString();
     user.emailOtp = emailOtp;
     user.emailOtpExpiry = getOTPExpiry();
     user.otpAttempts = 0;
@@ -1270,10 +1271,10 @@ export const impersonateUser = async (req: AuthRequest, res: Response) => {
       return sendError(res, 'Cannot impersonate a Developer account', 403);
     }
 
-    // Prevent Editors from impersonating Admins or Developers
+    // For Editors: only allow impersonating Reviewers
     if (requestingUser.role === UserRole.EDITOR &&
-      (targetUser.hasRole(UserRole.ADMIN) || targetUser.isDeveloper())) {
-      return sendError(res, 'Editors cannot impersonate Admin or Developer accounts', 403);
+      targetUser.role !== UserRole.REVIEWER) {
+      return sendError(res, 'Editors can only impersonate Reviewer accounts', 403);
     }
 
     // Prevent impersonating yourself (reduntant but safe)

@@ -24,8 +24,8 @@ module.exports = {
       acquire: 30000,
       idle: 10000
     },
-    // SSL connection for Render production environment
-    dialectOptions: {
+    // SSL connection for Render production environment (can be bypassed for local docker testing)
+    dialectOptions: process.env.DB_SSL_DISABLED === 'true' ? {} : {
       ssl: {
         require: true,
         rejectUnauthorized: false

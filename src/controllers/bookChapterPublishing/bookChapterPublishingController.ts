@@ -17,6 +17,7 @@ import { resolveDisplayBookTitle } from '../bookChapterSubmission/commonControll
 import sharp from 'sharp';
 import TemporaryUpload from '../../models/temporaryUpload';
 import PublishedAuthor from '../../models/publishedAuthor';
+import PublishedEditor from '../../models/publishedEditor';
 import PublishedIndividualChapter from '../../models/publishedIndividualChapter';
 import PublishedFile from '../../models/publishedFile';
 
@@ -666,6 +667,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             scope,
             tableContents,
             authorBiographies,
+            editorBiographies,
             archives,
             pricing,
             googleLink,
@@ -703,6 +705,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             scope: parseJsonField(scope),
             tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction),
             authorBiographies: parseJsonField(authorBiographies),
+            editorBiographies: parseJsonField(editorBiographies),
             archives: parseJsonField(archives),
             pricing: parseJsonField(pricing),
             googleLink: googleLink || null,
@@ -855,6 +858,29 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 }, { transaction });
             }
             authorMap.set(bio.authorName, pAuthor);
+        }
+
+        // --- Populate Editor Relational Tables ---
+        const { default: PublishedEditor } = await import('../../models/publishedEditor');
+        const editorBios = parseJsonField(editorBiographies) || [];
+        for (const bio of editorBios) {
+            let pEditor = await PublishedEditor.findOne({
+                where: { name: bio.authorName, email: bio.email || null },
+                transaction
+            });
+            if (!pEditor) {
+                await PublishedEditor.create({
+                    name: bio.authorName,
+                    email: bio.email || null,
+                    affiliation: bio.affiliation || '',
+                    biography: bio.biography || '',
+                }, { transaction });
+            } else {
+                await pEditor.update({
+                    affiliation: bio.affiliation || pEditor.affiliation,
+                    biography: bio.biography || pEditor.biography,
+                }, { transaction });
+            }
         }
 
         // Clear existing relational chapters for this book record if updating
@@ -1077,6 +1103,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             scope,
             tableContents,
             authorBiographies,
+            editorBiographies,
             archives,
             pricing,
             googleLink,
@@ -1113,6 +1140,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             scope: parseJsonField(scope),
             tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction),
             authorBiographies: parseJsonField(authorBiographies),
+            editorBiographies: parseJsonField(editorBiographies),
             archives: parseJsonField(archives),
             pricing: parseJsonField(pricing),
             googleLink: googleLink || null,
@@ -1149,6 +1177,29 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
                 }, { transaction });
             }
             authorMap.set(bio.authorName, pAuthor);
+        }
+
+        // --- Populate Editor Relational Tables ---
+        const { default: PublishedEditor } = await import('../../models/publishedEditor');
+        const editorBios = parseJsonField(editorBiographies) || [];
+        for (const bio of editorBios) {
+            let pEditor = await PublishedEditor.findOne({
+                where: { name: bio.authorName, email: bio.email || null },
+                transaction
+            });
+            if (!pEditor) {
+                await PublishedEditor.create({
+                    name: bio.authorName,
+                    email: bio.email || null,
+                    affiliation: bio.affiliation || '',
+                    biography: bio.biography || '',
+                }, { transaction });
+            } else {
+                await pEditor.update({
+                    affiliation: bio.affiliation || pEditor.affiliation,
+                    biography: bio.biography || pEditor.biography,
+                }, { transaction });
+            }
         }
 
         const toc = bookData.tableContents || [];
@@ -1327,7 +1378,7 @@ export const getAllPublishedChapters = async (req: Request, res: Response) => {
                 include: [
                     [PublishedBookChapter.sequelize!.literal('case when cover_image is not null then true else false end'), 'hasCoverImage']
                 ],
-                exclude: ['coverImage', 'tableContents', 'synopsis', 'scope', 'authorBiographies', 'archives', 'frontmatterPdfs', 'mainAuthor', 'coAuthorsData']
+                exclude: ['coverImage', 'tableContents', 'synopsis', 'scope', 'authorBiographies', 'editorBiographies', 'archives', 'frontmatterPdfs', 'mainAuthor', 'coAuthorsData']
             },
             order: [['publishedDate', 'DESC'], ['createdAt', 'DESC']],
         });
@@ -1383,6 +1434,9 @@ export const getPublishedChapterById = async (req: Request, res: Response) => {
         });
 
         if (!chapter) return sendError(res, 'Published book chapter not found', 404);
+
+        // Do not expose hidden chapters on the public endpoint
+        if ((chapter as any).isHidden) return sendError(res, 'Published book chapter not found', 404);
 
         return sendSuccess(res, chapter, 'Published book chapter retrieved successfully');
 
@@ -1575,7 +1629,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             title, author, coAuthors, category, description,
             isbn, doi, pages, publishedDate, releaseDate,
             copyright, indexedIn, pricing, synopsis, scope,
-            tableContents, authorBiographies, archives, frontmatterPdfs,
+            tableContents, authorBiographies, editorBiographies, archives, frontmatterPdfs,
             mainAuthor, coAuthorsData, coverImage,
             googleLink, flipkartLink, amazonLink, keywords
         } = req.body;
@@ -1600,6 +1654,14 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
                 }
             }
             mergedFrontmatterPdfs = await processTempPdfsForFrontmatter(merged, transaction);
+        }
+
+        if (editorBiographies) {
+            const incoming = parseJsonField(editorBiographies) || [];
+            // For biography arrays, we generally overwrite with the new list 
+            // but we could implement similar protection if needed.
+            // For now, we'll keep it simple as editors are often managed as a set.
+            chapter.editorBiographies = incoming;
         }
 
         await chapter.update({
@@ -1629,9 +1691,58 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(flipkartLink !== undefined && { flipkartLink }),
             ...(amazonLink !== undefined && { amazonLink }),
             ...(keywords !== undefined && { keywords }),
+            ...(editorBiographies && { editorBiographies: parseJsonField(editorBiographies) }),
         }, { transaction });
 
         await transaction.commit();
+
+        // --- RELATIONAL SYNC (Normalized Data) ---
+        // 1. Authors
+        if (chapter.authorBiographies) {
+            const authorBios = chapter.authorBiographies as any[];
+            for (const bio of authorBios) {
+                let pAuthor = await PublishedAuthor.findOne({
+                    where: { name: bio.authorName, email: bio.email || null }
+                });
+                if (!pAuthor) {
+                    await PublishedAuthor.create({
+                        name: bio.authorName,
+                        email: bio.email || null,
+                        affiliation: bio.affiliation || '',
+                        biography: bio.biography || '',
+                        userId: null,
+                    });
+                } else {
+                    await pAuthor.update({
+                        affiliation: bio.affiliation || pAuthor.affiliation,
+                        biography: bio.biography || pAuthor.biography,
+                    });
+                }
+            }
+        }
+
+        // 2. Editors
+        if (chapter.editorBiographies) {
+            const editorBios = chapter.editorBiographies as any[];
+            for (const bio of editorBios) {
+                let pEditor = await PublishedEditor.findOne({
+                    where: { name: bio.authorName, email: bio.email || null }
+                });
+                if (!pEditor) {
+                    await PublishedEditor.create({
+                        name: bio.authorName,
+                        email: bio.email || null,
+                        affiliation: bio.affiliation || '',
+                        biography: bio.biography || '',
+                    });
+                } else {
+                    await pEditor.update({
+                        affiliation: bio.affiliation || pEditor.affiliation,
+                        biography: bio.biography || pEditor.biography,
+                    });
+                }
+            }
+        }
 
         // Clear disk cache to ensure fresh updated files are fetched
         const cacheDirToClear = path.resolve(process.cwd(), 'uploads/published_cache', chapter.id.toString());
@@ -2038,6 +2149,69 @@ export const getPublishedAuthorById = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('❌ getPublishedAuthorById error:', error);
         return sendError(res, 'Failed to fetch author detail', 500);
+    }
+};
+
+/**
+ * @route GET /api/book-chapter-publishing/editors
+ * @desc  Get published editors with optional search/filter.
+ */
+export const getAllPublishedEditors = async (req: Request, res: Response) => {
+    try {
+        const { search, name, affiliation, email } = req.query;
+        const where: any = {};
+
+        if (search) {
+            where[Op.or] = [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { affiliation: { [Op.iLike]: `%${search}%` } },
+                { email: { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+
+        if (name) {
+            where.name = { [Op.iLike]: `%${name}%` };
+        }
+        if (affiliation) {
+            where.affiliation = { [Op.iLike]: `%${affiliation}%` };
+        }
+        if (email) {
+            where.email = { [Op.iLike]: `%${email}%` };
+        }
+
+        const editors = await PublishedEditor.findAll({
+            where,
+            order: [['name', 'ASC']]
+        });
+        return sendSuccess(res, editors);
+    } catch (error) {
+        console.error('❌ getAllPublishedEditors error:', error);
+        return sendError(res, 'Failed to fetch editors', 500);
+    }
+};
+
+/**
+ * @route GET /api/book-chapter-publishing/editors/:id
+ * @desc  Get editor details with linked books.
+ */
+export const getPublishedEditorById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const editor = await PublishedEditor.findByPk(id, {
+            include: [
+                {
+                    model: PublishedBookChapter,
+                    as: 'books',
+                    attributes: ['id', 'title', 'isbn'],
+                    through: { attributes: [] }
+                }
+            ]
+        });
+        if (!editor) return sendError(res, 'Editor not found', 404);
+        return sendSuccess(res, editor);
+    } catch (error) {
+        console.error('❌ getPublishedEditorById error:', error);
+        return sendError(res, 'Failed to fetch editor detail', 500);
     }
 };
 
