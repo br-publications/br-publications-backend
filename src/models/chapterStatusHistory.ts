@@ -107,7 +107,7 @@ class ChapterStatusHistory extends Model<
                     allowNull: true,
                 },
                 metadata: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 timestamp: {

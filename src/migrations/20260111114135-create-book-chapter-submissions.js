@@ -24,14 +24,14 @@ module.exports = {
       
       // Main Author Details
       mainAuthor: {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: false,
         comment: 'Main author information (firstName, lastName, designation, etc.)',
       },
       
       // Co-Authors (up to 6)
       coAuthors: {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: true,
         comment: 'Array of co-authors with their details',
       },
@@ -44,7 +44,7 @@ module.exports = {
       },
       
       bookChapterTitles: {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: false,
         comment: 'Array of selected chapter titles/IDs',
       },
@@ -56,7 +56,7 @@ module.exports = {
       },
       
       keywords: {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: false,
         comment: 'Array of keywords',
       },
@@ -99,7 +99,7 @@ module.exports = {
       },
       
       assignedReviewers: {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: true,
         comment: 'Array of reviewer IDs (max 2)',
       },

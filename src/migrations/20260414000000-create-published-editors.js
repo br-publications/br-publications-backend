@@ -5,7 +5,7 @@ module.exports = {
   async up(queryInterface, Sequelize) {
     // 1. Add editor_biographies to published_book_chapters
     await queryInterface.addColumn('published_book_chapters', 'editor_biographies', {
-      type: Sequelize.JSONB,
+      type: Sequelize.JSON,
       allowNull: true,
       defaultValue: null
     });

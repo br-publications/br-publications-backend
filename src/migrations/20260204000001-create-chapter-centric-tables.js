@@ -327,7 +327,7 @@ module.exports = {
                 allowNull: true,
             },
             metadata: {
-                type: Sequelize.JSONB,
+                type: Sequelize.JSON,
                 allowNull: true,
             },
             timestamp: {

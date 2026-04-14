@@ -20,12 +20,12 @@ module.exports = {
                 onDelete: 'RESTRICT'
             },
             mainAuthor: {
-                type: Sequelize.JSONB,
+                type: Sequelize.JSON,
                 allowNull: false,
                 comment: 'Main author information (firstName, lastName, email, etc.)'
             },
             coAuthors: {
-                type: Sequelize.JSONB,
+                type: Sequelize.JSON,
                 allowNull: true,
                 comment: 'Array of co-authors with their details'
             },

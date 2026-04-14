@@ -320,10 +320,10 @@ export const getMySubmissions = async (req: AuthRequest, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { bookTitle: { [Op.iLike]: `%${search}%` } },
+                { bookTitle: { [Op.like]: `%${search}%` } },
                 Sequelize.literal(`("mainAuthor"->>'firstName' || ' ' || "mainAuthor"->>'lastName') ILIKE '%${search}%'`),
                 Sequelize.literal(`"mainAuthor"->>'email' ILIKE '%${search}%'`),
-                { isbnNumber: { [Op.iLike]: `%${search}%` } }
+                { isbnNumber: { [Op.like]: `%${search}%` } }
             ];
         }
 
@@ -494,11 +494,11 @@ export const getAdminSubmissions = async (req: AuthRequest, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { bookTitle: { [Op.iLike]: `%${search}%` } },
+                { bookTitle: { [Op.like]: `%${search}%` } },
                 // JSON search with Sequelize literal to ensure correct casting and concatenation for full name search
                 Sequelize.literal(`("mainAuthor"->>'firstName' || ' ' || "mainAuthor"->>'lastName') ILIKE '%${search}%'`),
                 Sequelize.literal(`"mainAuthor"->>'email' ILIKE '%${search}%'`),
-                { isbnNumber: { [Op.iLike]: `%${search}%` } }
+                { isbnNumber: { [Op.like]: `%${search}%` } }
             ];
         }
 

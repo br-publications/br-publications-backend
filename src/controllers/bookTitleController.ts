@@ -140,7 +140,7 @@ export const getAllBookTitles = async (req: Request, res: Response) => {
         // Search filter
         if (search) {
             whereClause.title = {
-                [Op.iLike]: `%${search}%`,
+                [Op.like]: `%${search}%`,
             };
         }
 

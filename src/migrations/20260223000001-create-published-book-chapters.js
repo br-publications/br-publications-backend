@@ -92,37 +92,37 @@ module.exports = {
 
             // Rich JSONB content sections
             synopsis: {
-                type: DataTypes.JSONB,
+                type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: null,
                 comment: '{ "paragrapgh_1": "...", "paragrapgh_2": "..." }',
             },
             scope: {
-                type: DataTypes.JSONB,
+                type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: null,
                 comment: '{ "intro": "...", "item_1": "..." }',
             },
             table_contents: {
-                type: DataTypes.JSONB,
+                type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: null,
                 comment: '[{ "title": "...", "chapterNumber": "01", "pages": "1-20", "pdfFileName": "ch1.pdf" }]',
             },
             author_biographies: {
-                type: DataTypes.JSONB,
+                type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: null,
                 comment: '[{ "authorName": "...", "biography": "..." }]',
             },
             archives: {
-                type: DataTypes.JSONB,
+                type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: null,
                 comment: '{ "paragrapgh_1": "..." }',
             },
             pricing: {
-                type: DataTypes.JSONB,
+                type: DataTypes.JSON,
                 allowNull: true,
                 defaultValue: null,
                 comment: '{ "softCopyPrice": 0, "hardCopyPrice": 0 }',

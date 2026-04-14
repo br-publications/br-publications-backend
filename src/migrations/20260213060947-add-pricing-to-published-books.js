@@ -8,7 +8,7 @@ module.exports = {
         'published_books',
         'pricing',
         {
-          type: Sequelize.JSONB,
+          type: Sequelize.JSON,
           allowNull: true,
           comment: 'JSON object storing pricing details: { softCopyPrice, hardCopyPrice, bundlePrice }'
         }

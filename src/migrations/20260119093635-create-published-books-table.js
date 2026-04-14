@@ -79,27 +79,27 @@ module.exports = {
         allowNull: true,
       },
       synopsis: {
-        type: DataTypes.JSONB,
+        type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
       },
       scope: {
-        type: DataTypes.JSONB,
+        type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
       },
       table_contents: {
-        type: DataTypes.JSONB,
+        type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
       },
       author_biographies: {
-        type: DataTypes.JSONB,
+        type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
       },
       archives: {
-        type: DataTypes.JSONB,
+        type: DataTypes.JSON,
         allowNull: true,
         defaultValue: {},
       },

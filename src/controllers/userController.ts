@@ -68,10 +68,10 @@ export const getAllUsers = async (req: AuthRequest, res: Response) => {
     // Search by name, email, or username
     if (search) {
       whereConditions[Op.or] = [
-        { fullName: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { username: { [Op.iLike]: `%${search}%` } },
-        { userId: { [Op.iLike]: `%${search}%` } },
+        { fullName: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { userId: { [Op.like]: `%${search}%` } },
       ];
     }
 
@@ -297,10 +297,10 @@ export const getReviewers = async (req: AuthRequest, res: Response) => {
     // Add search filter if provided
     if (search) {
       whereConditions[Op.or] = [
-        { fullName: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { username: { [Op.iLike]: `%${search}%` } },
-        { userId: { [Op.iLike]: `%${search}%` } },
+        { fullName: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { userId: { [Op.like]: `%${search}%` } },
       ];
     }
 

@@ -71,7 +71,7 @@ class LocalFile extends Model<LocalFileAttributes, LocalFileCreationAttributes> 
                     allowNull: true,
                 },
                 extraMetadata: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 filePath: {

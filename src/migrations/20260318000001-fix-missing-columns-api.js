@@ -40,7 +40,7 @@ module.exports = {
           'published_book_chapters',
           'editors',
           {
-            type: Sequelize.JSONB,
+            type: Sequelize.JSON,
             allowNull: true,
           },
           { transaction }

@@ -4,27 +4,8 @@ module.exports = {
     up: async (queryInterface, Sequelize) => {
         const { DataTypes } = Sequelize;
 
-        // Create enum types first
-        await queryInterface.sequelize.query(`
-            DO $$ BEGIN
-                CREATE TYPE "enum_notifications_type" AS ENUM (
-                    'INFO', 'SUCCESS', 'WARNING', 'ERROR',
-                    'ABSTRACT_ACCEPTED', 'SUBMISSION_RECEIVED'
-                );
-            EXCEPTION WHEN duplicate_object THEN null;
-            END $$;
-        `);
+        // MySQL: ENUMs are defined inline in createTable, no separate TYPE creation needed.
 
-        await queryInterface.sequelize.query(`
-            DO $$ BEGIN
-                CREATE TYPE "enum_notifications_category" AS ENUM (
-                    'SUBMISSION', 'REVIEW', 'DISCUSSION', 'SYSTEM',
-                    'SUBMISSION_UPDATE', 'TEXTBOOK_SUBMISSION', 'TEXTBOOK_REVISION',
-                    'TEXTBOOK_DECISION', 'TEXTBOOK_PUBLISHING'
-                );
-            EXCEPTION WHEN duplicate_object THEN null;
-            END $$;
-        `);
 
         await queryInterface.createTable('notifications', {
             id: {

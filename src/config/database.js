@@ -6,8 +6,8 @@ module.exports = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
-    dialect: 'postgres',
+    port: process.env.DB_PORT || 3306,
+    dialect: process.env.DB_DIALECT || 'mysql',
     logging: false
   },
   production: {
@@ -15,21 +15,14 @@ module.exports = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
     host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 5432,
-    dialect: 'postgres',
+    port: process.env.DB_PORT || 3306,
+    dialect: process.env.DB_DIALECT || 'mysql',
     logging: false,
     pool: {
       max: 5,
       min: 0,
       acquire: 30000,
       idle: 10000
-    },
-    // SSL connection for Render production environment (can be bypassed for local docker testing)
-    dialectOptions: process.env.DB_SSL_DISABLED === 'true' ? {} : {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false
-      }
     }
   }
 };

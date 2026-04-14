@@ -62,7 +62,7 @@ class ConferenceArticle extends Model<ConferenceArticleAttributes, ConferenceArt
                     allowNull: false,
                 },
                 authors: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: false,
                     defaultValue: [],
                 },
@@ -83,7 +83,7 @@ class ConferenceArticle extends Model<ConferenceArticleAttributes, ConferenceArt
                     allowNull: true,
                 },
                 keywords: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },

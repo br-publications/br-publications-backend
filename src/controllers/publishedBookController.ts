@@ -27,15 +27,15 @@ export const getAllBooks = async (req: Request, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { title: { [Op.iLike]: `%${search}%` } },
-                { author: { [Op.iLike]: `%${search}%` } },
-                { description: { [Op.iLike]: `%${search}%` } },
-                { isbn: { [Op.iLike]: `%${search}%` } },
+                { title: { [Op.like]: `%${search}%` } },
+                { author: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
+                { isbn: { [Op.like]: `%${search}%` } },
             ];
         }
 
         if (author) {
-            where.author = { [Op.iLike]: `%${author}%` };
+            where.author = { [Op.like]: `%${author}%` };
         }
 
         if (publishedAfter || publishedBefore) {

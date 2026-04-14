@@ -19,19 +19,19 @@ module.exports = {
         // Add missing columns as per model definition (if they don't exist)
         if (!table.main_author) {
             await queryInterface.addColumn('published_book_chapters', 'main_author', {
-                type: Sequelize.JSONB,
+                type: Sequelize.JSON,
                 allowNull: true,
             });
         }
         if (!table.co_authors_data) {
             await queryInterface.addColumn('published_book_chapters', 'co_authors_data', {
-                type: Sequelize.JSONB,
+                type: Sequelize.JSON,
                 allowNull: true,
             });
         }
         if (!table.frontmatter_pdfs) {
             await queryInterface.addColumn('published_book_chapters', 'frontmatter_pdfs', {
-                type: Sequelize.JSONB,
+                type: Sequelize.JSON,
                 allowNull: true,
             });
         }

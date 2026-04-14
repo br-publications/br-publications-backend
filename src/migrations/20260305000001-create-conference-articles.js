@@ -29,7 +29,7 @@ module.exports = {
                     allowNull: false,
                 },
                 authors: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: false,
                     defaultValue: [],
                     comment: 'Array of author name strings',
@@ -51,7 +51,7 @@ module.exports = {
                     allowNull: true,
                 },
                 keywords: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                     comment: 'Array of keyword strings',

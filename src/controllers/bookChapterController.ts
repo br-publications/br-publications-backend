@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import BookChapter from '../models/bookChapter';
 import BookTitle from '../models/bookTitle';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import IndividualChapter from '../models/individualChapter';
 import BookChapterSubmission from '../models/bookChapterSubmission';
 
@@ -194,7 +194,8 @@ export const getChaptersByBookTitle = async (req: Request, res: Response) => {
         const chapters = await BookChapter.findAll({
             where: whereClause,
             order: [
-                ['chapterNumber', 'ASC NULLS LAST'],
+                [Sequelize.literal('chapterNumber IS NULL'), 'ASC'],
+                ['chapterNumber', 'ASC'],
                 ['createdAt', 'ASC'],
             ],
         });
@@ -291,7 +292,7 @@ export const getAllChapters = async (req: Request, res: Response) => {
 
         if (search) {
             whereClause.chapterTitle = {
-                [Op.iLike]: `%${search}%`,
+                [Op.like]: `%${search}%`,
             };
         }
 
@@ -306,7 +307,11 @@ export const getAllChapters = async (req: Request, res: Response) => {
                     attributes: ['id', 'title'],
                 },
             ],
-            order: [['chapterNumber', 'ASC NULLS LAST'], ['createdAt', 'ASC']],
+            order: [
+                [Sequelize.literal('chapterNumber IS NULL'), 'ASC'],
+                ['chapterNumber', 'ASC'],
+                ['createdAt', 'ASC']
+            ],
             limit: Number(limit),
             offset,
         });
