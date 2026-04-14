@@ -2,6 +2,13 @@ import dotenv from 'dotenv';
 dotenv.config();
 console.log('🚀 Server starting...');
 
+process.on('uncaughtException', (err) => {
+  console.log('🔥 UNCAUGHT EXCEPTION CAUGHT:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+  console.log('🔥 UNHANDLED REJECTION CAUGHT:', reason);
+});
+
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import cors from 'cors';
@@ -444,8 +451,9 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
     });
-  } catch (error) {
-    console.error('❌ Unable to connect to the database:', error);
+  } catch (error: any) {
+    console.log('❌ FATAL SERVER ERROR:', error?.message || error);
+    console.log('STACK TRACE:', error?.stack);
     process.exit(1);
   }
 };
