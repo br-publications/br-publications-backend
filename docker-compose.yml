@@ -43,7 +43,7 @@ services:
       - EMAIL_PASSWORD=ehbosizeingzldei
       - GOOGLE_CLIENT_ID=475289564338-bjoieqnbf2abi140onried6ao9getu4a.apps.googleusercontent.com
       - GOOGLE_CLIENT_SECRET=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
-      - CORS_ORIGIN=http://localhost:5173,http://localhost:8080
+      - CORS_ORIGIN=http://localhost:5173,http://localhost:8080,https://www.brpublications.com,https://brpublications.com
       - MAX_OTP_ATTEMPTS=5
       - OTP_EXPIRY_MINUTES=10
       - MAX_FILE_SIZE=10485760
