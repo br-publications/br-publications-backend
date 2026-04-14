@@ -12,13 +12,13 @@ module.exports = {
     // 2. Populate existing records with a unique ID based on their auto-increment ID
     // We use a raw query to ensure efficiency for existing rows
     const [results] = await queryInterface.sequelize.query(
-      'SELECT id FROM book_chapter_reviewer_assignments WHERE "assignmentRef" IS NULL'
+      'SELECT id FROM book_chapter_reviewer_assignments WHERE `assignmentRef` IS NULL'
     );
 
     for (const row of results) {
       const ref = `BCR-${String(row.id).padStart(5, '0')}`;
       await queryInterface.sequelize.query(
-        `UPDATE book_chapter_reviewer_assignments SET "assignmentRef" = '${ref}' WHERE id = ${row.id}`
+        `UPDATE book_chapter_reviewer_assignments SET \`assignmentRef\` = '${ref}' WHERE id = ${row.id}`
       );
     }
     

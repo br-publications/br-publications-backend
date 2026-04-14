@@ -49,7 +49,7 @@ module.exports = {
                 defaultValue: 'ABSTRACT_SUBMITTED',
             },
             assigned_reviewers: {
-                type: Sequelize.ARRAY(Sequelize.INTEGER),
+                type: Sequelize.JSON,
                 allowNull: true,
             },
             review_deadline: {

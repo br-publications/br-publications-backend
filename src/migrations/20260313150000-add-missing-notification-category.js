@@ -3,12 +3,10 @@
 module.exports = {
     up: async (queryInterface, Sequelize) => {
         try {
-            // Add 'SUBMISSION_UPDATE' to enum_notifications_category
-            await queryInterface.sequelize.query(
-                "ALTER TYPE \"enum_notifications_category\" ADD VALUE IF NOT EXISTS 'SUBMISSION_UPDATE';"
-            ).catch(() => {
-                // Silently ignore if enum doesn't exist
-                console.log('⚠️ SUBMISSION_UPDATE enum migration skipped - enum may not exist yet');
+            await queryInterface.changeColumn('notifications', 'category', {
+                type: Sequelize.ENUM('SUBMISSION', 'REVIEW', 'DISCUSSION', 'SYSTEM', 'SUBMISSION_UPDATE', 'TEXTBOOK_SUBMISSION', 'TEXTBOOK_REVISION', 'TEXTBOOK_DECISION', 'TEXTBOOK_PUBLISHING'),
+                allowNull: false,
+                defaultValue: 'SYSTEM'
             });
         } catch (err) {
             console.log('⚠️ SUBMISSION_UPDATE enum migration error (non-critical):', err.message);

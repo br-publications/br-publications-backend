@@ -72,7 +72,8 @@ module.exports = {
       }
 
       // Identify constraint name if needed to drop enum type? Postgres keeps enum types even if column dropped.
-      await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_published_books_bookType";', { transaction });
+      // MySQL drops enums automatically when dropping the column.
+      // await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_published_books_bookType";', { transaction });
 
       await transaction.commit();
     } catch (err) {
