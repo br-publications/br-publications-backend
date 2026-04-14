@@ -2153,6 +2153,69 @@ export const getPublishedAuthorById = async (req: Request, res: Response) => {
 };
 
 /**
+ * @route GET /api/book-chapter-publishing/editors
+ * @desc  Get published editors with optional search/filter.
+ */
+export const getAllPublishedEditors = async (req: Request, res: Response) => {
+    try {
+        const { search, name, affiliation, email } = req.query;
+        const where: any = {};
+
+        if (search) {
+            where[Op.or] = [
+                { name: { [Op.iLike]: `%${search}%` } },
+                { affiliation: { [Op.iLike]: `%${search}%` } },
+                { email: { [Op.iLike]: `%${search}%` } },
+            ];
+        }
+
+        if (name) {
+            where.name = { [Op.iLike]: `%${name}%` };
+        }
+        if (affiliation) {
+            where.affiliation = { [Op.iLike]: `%${affiliation}%` };
+        }
+        if (email) {
+            where.email = { [Op.iLike]: `%${email}%` };
+        }
+
+        const editors = await PublishedEditor.findAll({
+            where,
+            order: [['name', 'ASC']]
+        });
+        return sendSuccess(res, editors);
+    } catch (error) {
+        console.error('❌ getAllPublishedEditors error:', error);
+        return sendError(res, 'Failed to fetch editors', 500);
+    }
+};
+
+/**
+ * @route GET /api/book-chapter-publishing/editors/:id
+ * @desc  Get editor details with linked books.
+ */
+export const getPublishedEditorById = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const editor = await PublishedEditor.findByPk(id, {
+            include: [
+                {
+                    model: PublishedBookChapter,
+                    as: 'books',
+                    attributes: ['id', 'title', 'isbn'],
+                    through: { attributes: [] }
+                }
+            ]
+        });
+        if (!editor) return sendError(res, 'Editor not found', 404);
+        return sendSuccess(res, editor);
+    } catch (error) {
+        console.error('❌ getPublishedEditorById error:', error);
+        return sendError(res, 'Failed to fetch editor detail', 500);
+    }
+};
+
+/**
  * @route POST /api/book-chapter-publishing/chapters/:chapterId/views
  * @desc  Increment the view count for a specific individual chapter.
  * @access Public
