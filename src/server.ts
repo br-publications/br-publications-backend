@@ -118,13 +118,21 @@ app.disable('x-powered-by');
 const rawOrigins = process.env.CORS_ORIGIN || 'http://localhost:3000';
 const allowedOrigins = rawOrigins.split(',').map(o => o.trim());
 
+// Always allow production domains and local development origins
+const productionOrigins = ['https://www.brpublications.com', 'https://brpublications.com'];
+
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     
     // Check if the origin is explicitly allowed or is a local debugging origin
-    if (allowedOrigins.indexOf(origin) !== -1 || origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) {
+    if (
+      allowedOrigins.indexOf(origin) !== -1 || 
+      productionOrigins.indexOf(origin) !== -1 ||
+      origin.startsWith('http://localhost:') || 
+      origin.startsWith('http://127.0.0.1:')
+    ) {
       callback(null, true);
     } else {
       callback(new Error(`Origin ${origin} not allowed by CORS`));
