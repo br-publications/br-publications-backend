@@ -2,13 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 console.log('🚀 Server starting...');
 
-process.on('uncaughtException', (err) => {
-  console.log('🔥 UNCAUGHT EXCEPTION CAUGHT:', err);
-});
-process.on('unhandledRejection', (reason, promise) => {
-  console.log('🔥 UNHANDLED REJECTION CAUGHT:', reason);
-});
-
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
 import cors from 'cors';
@@ -42,7 +35,7 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     port: Number(process.env.DB_PORT) || 3306,
-    dialect: (process.env.DB_DIALECT as any) || 'mysql',
+    dialect: ((process.env.DB_DIALECT as string) || 'mysql').toLowerCase() as any,
     logging: false,
     pool: {
       max: 5,
@@ -451,9 +444,8 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`✅ Server running on port ${PORT}`);
     });
-  } catch (error: any) {
-    console.log('❌ FATAL SERVER ERROR:', error?.message || error);
-    console.log('STACK TRACE:', error?.stack);
+  } catch (error) {
+    console.error('❌ Unable to connect to the database:', error);
     process.exit(1);
   }
 };
