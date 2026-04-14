@@ -6,7 +6,7 @@ module.exports = {
     const table = await queryInterface.describeTable('book_chapter_submissions');
     if (!table.editors) {
       await queryInterface.addColumn('book_chapter_submissions', 'editors', {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: true,
         defaultValue: null,
       });

@@ -3,8 +3,24 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // Add missing enum values for book_chapter_submissions_status
-    const missingStatuses = [
+    const fullEnumValues = [
+        'INITIAL_SUBMITTED',           
+        'ASSIGNED_TO_EDITOR',          
+        'EDITOR_REVIEWING',            
+        'EDITOR_ACCEPTED',             
+        'EDITOR_REJECTED',             
+        'FULL_CHAPTER_PENDING',        
+        'FULL_CHAPTER_SUBMITTED',      
+        'REVIEWERS_ASSIGNED',          
+        'REVIEWER_PENDING_ACCEPTANCE', 
+        'UNDER_REVIEW',                
+        'REVISION_REQUESTED',          
+        'REVISION_SUBMITTED',          
+        'REVIEW_COMPLETED',            
+        'EDITOR_FINAL_REVIEW',         
+        'APPROVED',                    
+        'REJECTED',                    
+        'PUBLISHED',
         'ABSTRACT_SUBMITTED',
         'MANUSCRIPTS_PENDING',
         'REVIEWER_ASSIGNMENT',
@@ -13,24 +29,18 @@ module.exports = {
         'PUBLICATION_IN_PROGRESS'
     ];
 
-    for (const status of missingStatuses) {
-        try {
-            await queryInterface.sequelize.query(
-                `ALTER TYPE "enum_book_chapter_submissions_status" ADD VALUE '${status}';`
-            );
-        } catch (error) {
-            // Ignore if the value already exists
-            if (error.message && !error.message.includes('already exists')) {
-                throw error;
-            }
-        }
+    try {
+        await queryInterface.changeColumn('book_chapter_submissions', 'status', {
+            type: Sequelize.ENUM(...fullEnumValues),
+            allowNull: false,
+            defaultValue: 'ABSTRACT_SUBMITTED' // the default in the model
+        });
+    } catch (error) {
+        console.log('⚠️ book_chapter_submissions status ENUM update skipped:', error.message);
     }
   },
 
   down: async (queryInterface, Sequelize) => {
-    // Postgres doesn't easily allow removing values from ENUMs.
-    // It requires creating a new ENUM type, recreating columns, etc.
-    // It's standard practice to leave "down" empty for adding ENUM values.
-    console.log('Postgres ENUM removals are not natively supported without rebuilding the type. Leaving added values.');
+    console.log('MySQL ENUM removals are not done here safely without data loss. Leaving added values.');
   }
 };

@@ -1339,15 +1339,15 @@ export const getAllPublishedChapters = async (req: Request, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { title: { [Op.iLike]: `%${search}%` } },
-                { author: { [Op.iLike]: `%${search}%` } },
-                { isbn: { [Op.iLike]: `%${search}%` } },
-                { description: { [Op.iLike]: `%${search}%` } },
+                { title: { [Op.like]: `%${search}%` } },
+                { author: { [Op.like]: `%${search}%` } },
+                { isbn: { [Op.like]: `%${search}%` } },
+                { description: { [Op.like]: `%${search}%` } },
             ];
         }
 
         if (author) {
-            where.author = { [Op.iLike]: `%${author}%` };
+            where.author = { [Op.like]: `%${author}%` };
         }
 
         if (publishedAfter || publishedBefore) {
@@ -2094,20 +2094,20 @@ export const getAllPublishedAuthors = async (req: Request, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { name: { [Op.iLike]: `%${search}%` } },
-                { affiliation: { [Op.iLike]: `%${search}%` } },
-                { email: { [Op.iLike]: `%${search}%` } },
+                { name: { [Op.like]: `%${search}%` } },
+                { affiliation: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } },
             ];
         }
 
         if (name) {
-            where.name = { [Op.iLike]: `%${name}%` };
+            where.name = { [Op.like]: `%${name}%` };
         }
         if (affiliation) {
-            where.affiliation = { [Op.iLike]: `%${affiliation}%` };
+            where.affiliation = { [Op.like]: `%${affiliation}%` };
         }
         if (email) {
-            where.email = { [Op.iLike]: `%${email}%` };
+            where.email = { [Op.like]: `%${email}%` };
         }
 
         const authors = await PublishedAuthor.findAll({
@@ -2163,20 +2163,20 @@ export const getAllPublishedEditors = async (req: Request, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { name: { [Op.iLike]: `%${search}%` } },
-                { affiliation: { [Op.iLike]: `%${search}%` } },
-                { email: { [Op.iLike]: `%${search}%` } },
+                { name: { [Op.like]: `%${search}%` } },
+                { affiliation: { [Op.like]: `%${search}%` } },
+                { email: { [Op.like]: `%${search}%` } },
             ];
         }
 
         if (name) {
-            where.name = { [Op.iLike]: `%${name}%` };
+            where.name = { [Op.like]: `%${name}%` };
         }
         if (affiliation) {
-            where.affiliation = { [Op.iLike]: `%${affiliation}%` };
+            where.affiliation = { [Op.like]: `%${affiliation}%` };
         }
         if (email) {
-            where.email = { [Op.iLike]: `%${email}%` };
+            where.email = { [Op.like]: `%${email}%` };
         }
 
         const editors = await PublishedEditor.findAll({

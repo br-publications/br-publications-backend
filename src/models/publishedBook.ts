@@ -166,29 +166,29 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                     allowNull: true,
                 },
                 synopsis: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 scope: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 tableContents: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     field: 'table_contents',
                 },
                 authorBiographies: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     field: 'author_biographies',
                 },
                 archives: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 pricing: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 googleLink: {

@@ -36,14 +36,14 @@ export const getConferences = async (req: Request, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { title: { [Op.iLike]: `%${search}%` } },
-                { publisher: { [Op.iLike]: `%${search}%` } },
-                { location: { [Op.iLike]: `%${search}%` } },
+                { title: { [Op.like]: `%${search}%` } },
+                { publisher: { [Op.like]: `%${search}%` } },
+                { location: { [Op.like]: `%${search}%` } },
             ];
         }
 
         if (publisher) {
-            where.publisher = { [Op.iLike]: `%${publisher}%` };
+            where.publisher = { [Op.like]: `%${publisher}%` };
         }
 
         const { rows: conferences, count: total } = await Conference.findAndCountAll({
@@ -104,8 +104,8 @@ export const getArticlesByConference = async (req: Request, res: Response) => {
 
         if (search) {
             where[Op.or] = [
-                { title: { [Op.iLike]: `%${search}%` } },
-                { abstract: { [Op.iLike]: `%${search}%` } },
+                { title: { [Op.like]: `%${search}%` } },
+                { abstract: { [Op.like]: `%${search}%` } },
             ];
         }
 

@@ -53,7 +53,7 @@ module.exports = {
       },
       
       metadata: {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: true,
         comment: 'Additional data like assigned user IDs, deadlines, etc.',
       },

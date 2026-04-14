@@ -19,7 +19,7 @@ export const listTemplates = async (req: Request, res: Response) => {
             where.type = type;
         }
         if (search) {
-            where.code = { [Op.iLike]: `%${search}%` };
+            where.code = { [Op.like]: `%${search}%` };
         }
 
         const templates = await CommunicationTemplate.findAll({

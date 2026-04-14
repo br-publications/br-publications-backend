@@ -145,12 +145,12 @@ export const getExtendedStats = async (req: Request, res: Response): Promise<voi
             editorWorkloadResult,
         ] = await Promise.all([
             // 1. User Growth (Last 6 Months)
-            // Group by month using DATE_TRUNC
+            // Group by month using DATE_FORMAT (MySQL syntax)
             seq.query(`
-                SELECT DATE_TRUNC('month', "createdAt") AS month, COUNT(id) AS count
+                SELECT DATE_FORMAT(createdAt, '%Y-%m-01') AS month, COUNT(id) AS count
                 FROM users 
-                WHERE "createdAt" >= (NOW() - INTERVAL '6 months')
-                GROUP BY DATE_TRUNC('month', "createdAt")
+                WHERE createdAt >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+                GROUP BY DATE_FORMAT(createdAt, '%Y-%m-01')
                 ORDER BY month ASC
     `, { type: QueryTypes.SELECT }),
 
@@ -170,21 +170,21 @@ export const getExtendedStats = async (req: Request, res: Response): Promise<voi
 
             // 4. Top Reviewers (by # of COMPLETED assignments)
             seq.query(`
-                SELECT r.id, r."fullName" as name, r.email, COUNT(a.id) AS count 
+                SELECT r.id, r.fullName as name, r.email, COUNT(a.id) AS count 
                 FROM book_chapter_reviewer_assignments a 
-                JOIN users r ON a."reviewerId" = r.id 
+                JOIN users r ON a.reviewerId = r.id 
                 WHERE a.status = 'COMPLETED' 
-                GROUP BY r.id, r."fullName", r.email 
+                GROUP BY r.id, r.fullName, r.email 
                 ORDER BY count DESC 
                 LIMIT 5
     `, { type: QueryTypes.SELECT }),
 
             // 5. Editor Workload (by # of submissions currently assigned)
             seq.query(`
-                SELECT e.id, e."fullName" as name, e.email, COUNT(s.id) AS count 
+                SELECT e.id, e.fullName as name, e.email, COUNT(s.id) AS count 
                 FROM book_chapter_submissions s 
-                JOIN users e ON s."assignedEditorId" = e.id 
-                GROUP BY e.id, e."fullName", e.email 
+                JOIN users e ON s.assignedEditorId = e.id 
+                GROUP BY e.id, e.fullName, e.email 
                 ORDER BY count DESC 
                 LIMIT 5
             `, { type: QueryTypes.SELECT })
@@ -246,35 +246,35 @@ export const getEngagementStats = async (req: Request, res: Response): Promise<v
 
             // 2. Publishing Trends (Books over 12 mo)
             seq.query(`
-                SELECT DATE_TRUNC('month', created_at) AS month, COUNT(id) AS count 
+                SELECT DATE_FORMAT(created_at, '%Y-%m-01') AS month, COUNT(id) AS count 
                 FROM published_books 
-                WHERE created_at >= (NOW() - INTERVAL '12 months') 
-                GROUP BY DATE_TRUNC('month', created_at) 
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH) 
+                GROUP BY DATE_FORMAT(created_at, '%Y-%m-01') 
                 ORDER BY month ASC
     `, { type: QueryTypes.SELECT }),
 
             // 3. Publishing Trends (Chapters over 12 mo)
             seq.query(`
-                SELECT DATE_TRUNC('month', created_at) AS month, COUNT(id) AS count 
+                SELECT DATE_FORMAT(created_at, '%Y-%m-01') AS month, COUNT(id) AS count 
                 FROM published_book_chapters 
-                WHERE created_at >= (NOW() - INTERVAL '12 months') 
-                GROUP BY DATE_TRUNC('month', created_at) 
+                WHERE created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH) 
+                GROUP BY DATE_FORMAT(created_at, '%Y-%m-01') 
                 ORDER BY month ASC
     `, { type: QueryTypes.SELECT }),
 
             // 4. Recent Activity: Users
             seq.query(`
-                SELECT 'USER_SIGNUP' as type, id, "fullName" as title, "createdAt" as timestamp 
+                SELECT 'USER_SIGNUP' as type, id, fullName as title, createdAt as timestamp 
                 FROM users 
-                ORDER BY "createdAt" DESC 
+                ORDER BY createdAt DESC 
                 LIMIT 10
     `, { type: QueryTypes.SELECT }),
 
             // 5. Recent Activity: Submissions
             seq.query(`
-                SELECT 'SUBMISSION' as type, id, "bookTitle" as title, "createdAt" as timestamp 
+                SELECT 'SUBMISSION' as type, id, bookTitle as title, createdAt as timestamp 
                 FROM book_chapter_submissions 
-                ORDER BY "createdAt" DESC 
+                ORDER BY createdAt DESC 
                 LIMIT 10
             `, { type: QueryTypes.SELECT })
         ]);

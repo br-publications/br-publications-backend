@@ -298,14 +298,14 @@ class BookChapterSubmission extends Model<
           onDelete: 'RESTRICT',
         },
         mainAuthor: {
-          type: DataTypes.JSONB,
+          type: DataTypes.JSON,
           allowNull: false,
           validate: {
             notEmpty: { msg: 'Main author information is required' },
           },
         },
         coAuthors: {
-          type: DataTypes.JSONB,
+          type: DataTypes.JSON,
           allowNull: true,
         },
         bookTitle: {
@@ -316,12 +316,12 @@ class BookChapterSubmission extends Model<
           },
         },
         editors: {
-          type: DataTypes.JSONB,
+          type: DataTypes.JSON,
           allowNull: true,
           defaultValue: null,
         },
         bookChapterTitles: {
-          type: DataTypes.JSONB,
+          type: DataTypes.JSON,
           allowNull: false,
           validate: {
             notEmpty: { msg: 'At least one chapter title is required' },
@@ -335,7 +335,7 @@ class BookChapterSubmission extends Model<
           },
         },
         keywords: {
-          type: DataTypes.JSONB,
+          type: DataTypes.JSON,
           allowNull: false,
           validate: {
             notEmpty: { msg: 'Keywords are required' },

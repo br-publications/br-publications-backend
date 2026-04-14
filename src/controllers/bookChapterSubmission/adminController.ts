@@ -291,7 +291,7 @@ export const getStatistics = async (req: AuthRequest, res: Response) => {
 
         const submissionsByMonth = await BookChapterSubmission.findAll({
             attributes: [
-                [Sequelize.fn('DATE_TRUNC', 'month', Sequelize.col('submissionDate')), 'month'],
+                [Sequelize.fn('DATE_FORMAT', Sequelize.col('submissionDate'), '%Y-%m-01'), 'month'],
                 [Sequelize.fn('COUNT', '*'), 'count']
             ],
             where: {
@@ -299,8 +299,8 @@ export const getStatistics = async (req: AuthRequest, res: Response) => {
                     [Op.gte]: oneYearAgo
                 }
             },
-            group: [Sequelize.fn('DATE_TRUNC', 'month', Sequelize.col('submissionDate'))],
-            order: [[Sequelize.fn('DATE_TRUNC', 'month', Sequelize.col('submissionDate')), 'ASC']],
+            group: [Sequelize.fn('DATE_FORMAT', Sequelize.col('submissionDate'), '%Y-%m-01')],
+            order: [[Sequelize.fn('DATE_FORMAT', Sequelize.col('submissionDate'), '%Y-%m-01'), 'ASC']],
             raw: true
         });
 
@@ -396,13 +396,13 @@ export const getAdminSubmissions = async (req: AuthRequest, res: Response) => {
             attributes: [
                 [
                     Sequelize.fn('SUM', Sequelize.literal(
-                        `CASE WHEN status = '${BookChapterStatus.ABSTRACT_SUBMITTED}' AND "submissionDate" >= '${thirtyDaysAgo.toISOString()}' THEN 1 ELSE 0 END`
+                        `CASE WHEN status = '${BookChapterStatus.ABSTRACT_SUBMITTED}' AND submissionDate >= '${thirtyDaysAgo.toISOString()}' THEN 1 ELSE 0 END`
                     )),
                     'new'
                 ],
                 [
                     Sequelize.fn('SUM', Sequelize.literal(
-                        `CASE WHEN status = '${BookChapterStatus.ABSTRACT_SUBMITTED}' AND "submissionDate" < '${thirtyDaysAgo.toISOString()}' THEN 1 ELSE 0 END`
+                        `CASE WHEN status = '${BookChapterStatus.ABSTRACT_SUBMITTED}' AND submissionDate < '${thirtyDaysAgo.toISOString()}' THEN 1 ELSE 0 END`
                     )),
                     'unassigned'
                 ],

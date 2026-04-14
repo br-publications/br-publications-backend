@@ -6,7 +6,7 @@ module.exports = {
     const table = await queryInterface.describeTable('published_book_chapters');
     if (!table.keywords) {
       await queryInterface.addColumn('published_book_chapters', 'keywords', {
-        type: Sequelize.JSONB,
+        type: Sequelize.JSON,
         allowNull: true,
         defaultValue: null,
         after: 'description'

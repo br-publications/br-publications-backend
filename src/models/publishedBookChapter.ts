@@ -150,7 +150,7 @@ class PublishedBookChapter
                     allowNull: true,
                 },
                 mainAuthor: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 coAuthors: {
@@ -158,7 +158,7 @@ class PublishedBookChapter
                     allowNull: true,
                 },
                 coAuthorsData: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 title: {
@@ -166,7 +166,7 @@ class PublishedBookChapter
                     allowNull: false,
                 },
                 editors: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                 },
                 primaryEditor: {
@@ -196,7 +196,7 @@ class PublishedBookChapter
                     defaultValue: 0,
                 },
                 keywords: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
@@ -221,32 +221,32 @@ class PublishedBookChapter
                     allowNull: true,
                 },
                 synopsis: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
                 scope: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
                 tableContents: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
                 authorBiographies: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
                 archives: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
                 pricing: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
@@ -263,12 +263,12 @@ class PublishedBookChapter
                     allowNull: true,
                 },
                 frontmatterPdfs: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
                 editorBiographies: {
-                    type: DataTypes.JSONB,
+                    type: DataTypes.JSON,
                     allowNull: true,
                     defaultValue: null,
                 },
