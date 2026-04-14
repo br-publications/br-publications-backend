@@ -177,7 +177,7 @@ class IndividualChapter extends Model<
                     defaultValue: ChapterStatus.ABSTRACT_SUBMITTED,
                 },
                 assignedReviewers: {
-                    type: DataTypes.ARRAY(DataTypes.INTEGER),
+                    type: DataTypes.JSON,
                     allowNull: true,
                     field: 'assigned_reviewers',
                 },

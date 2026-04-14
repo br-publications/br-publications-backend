@@ -137,12 +137,11 @@ module.exports = {
       name: 'idx_published_books_created_at',
     });
 
-    // Add full-text search index for title and author (PostgreSQL)
-    await queryInterface.sequelize.query(`
-            CREATE INDEX idx_published_books_search 
-            ON published_books 
-            USING gin(to_tsvector('english', title || ' ' || author || ' ' || COALESCE(description, '')));
-        `);
+    // Add full-text search index for title and author (MySQL)
+    await queryInterface.addIndex('published_books', ['title', 'author', 'description'], {
+      name: 'idx_published_books_search',
+      type: 'FULLTEXT'
+    });
   },
 
   down: async (queryInterface, Sequelize) => {

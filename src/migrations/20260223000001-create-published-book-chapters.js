@@ -170,12 +170,11 @@ module.exports = {
             name: 'idx_pbc_is_featured',
         });
 
-        // Full-text search index
-        await queryInterface.sequelize.query(`
-      CREATE INDEX idx_pbc_search
-      ON published_book_chapters
-      USING gin(to_tsvector('english', title || ' ' || author || ' ' || COALESCE(description, '')));
-    `);
+        // Full-text search index (MySQL)
+        await queryInterface.addIndex('published_book_chapters', ['title', 'author', 'description'], {
+            name: 'idx_pbc_search',
+            type: 'FULLTEXT'
+        });
     },
 
     async down(queryInterface) {
