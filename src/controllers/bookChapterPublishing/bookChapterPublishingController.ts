@@ -1376,9 +1376,9 @@ export const getAllPublishedChapters = async (req: Request, res: Response) => {
             // Exclude raw PDF/image data from list response (large fields)
             attributes: {
                 include: [
-                    [PublishedBookChapter.sequelize!.literal('case when cover_image is not null then true else false end'), 'hasCoverImage']
+                    [PublishedBookChapter.sequelize!.literal('case when `cover_image` is not null then true else false end'), 'hasCoverImage']
                 ],
-                exclude: ['coverImage', 'tableContents', 'synopsis', 'scope', 'authorBiographies', 'editorBiographies', 'archives', 'frontmatterPdfs', 'mainAuthor', 'coAuthorsData']
+                exclude: ['coverImage', 'tableContents', 'synopsis', 'scope', 'authorBiographies', 'editorBiographies', 'archives', 'frontmatterPdfs', 'mainAuthor', 'coAuthorsData', 'primaryEditor', 'keywords']
             },
             order: [['publishedDate', 'DESC'], ['createdAt', 'DESC']],
         });
