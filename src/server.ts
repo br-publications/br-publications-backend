@@ -27,6 +27,9 @@ import {
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
+// Enable 'trust proxy' for correct client IP detection behind Hostinger/Nginx proxy
+app.set('trust proxy', 1);
+
 // Database Configuration
 const sequelize = new Sequelize(
   process.env.DB_NAME as string,
