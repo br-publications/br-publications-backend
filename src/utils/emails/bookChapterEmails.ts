@@ -795,9 +795,9 @@ export const sendBookChapterPublishedEmail = async (
         link: string;
     }
 ): Promise<void> => {
-    const keywordsStr = Array.isArray(data.keywords) ? data.keywords.join(', ') : (data.keywords || 'N/A');
-    const editorsStr = Array.isArray(data.editors) ? data.editors.join(', ') : (data.editors || 'N/A');
-    let subject = `Congratulations! Your Book Chapter Published: ${data.bookTitle}`;
+    const keywordsStr = Array.isArray(data?.keywords) ? data.keywords.join(', ') : (data?.keywords || 'N/A');
+    const editorsStr = Array.isArray(data?.editors) ? data.editors.join(', ') : (data?.editors || 'N/A');
+    let subject = `Congratulations! Your Book Chapter Published: ${data?.bookTitle || 'Publication'}`;
     let html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
       <h2>Hello ${data.authorName},</h2>
@@ -854,7 +854,7 @@ export const sendIndividualChapterPublishedEmail = async (
         link: string;
     }
 ): Promise<void> => {
-    let subject = `Congratulations! Your Chapter Published: ${data.chapterTitle}`;
+    let subject = `Congratulations! Your Chapter Published: ${data?.chapterTitle || 'Chapter'}`;
     let html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
       <div style="background: #1e5292; padding: 30px; border-radius: 8px 8px 0 0; text-align: center;">

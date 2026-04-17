@@ -133,9 +133,10 @@ export const submitTextBook = async (req: AuthRequest, res: Response) => {
         const fullTextFile = files?.fullTextFile?.[0];
 
         // Validate required fields
-        if (!mainAuthor || !bookTitle) {
+        if (!mainAuthor || !mainAuthor.firstName || !bookTitle) {
+            console.error(`[Submit-TextBook] Validation failed. bookTitle: ${!!bookTitle}, mainAuthor: ${!!mainAuthor}, firstName: ${mainAuthor?.firstName}`);
             await transaction.rollback();
-            return sendError(res, 'All required fields must be provided', 400);
+            return sendError(res, 'At least Author First Name and Book Title are required.', 400);
         }
 
         // Upgrade user role to AUTHOR if currently USER
@@ -1549,9 +1550,9 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
             textBookSubmissionId: submission.id,
             bookType: BookType.TEXTBOOK,
             title: submission.bookTitle,
-            author: `${submission.mainAuthor.firstName} ${submission.mainAuthor.lastName}`,
-            coAuthors: (submission.coAuthors && Array.isArray(submission.coAuthors)) 
-                ? submission.coAuthors.map((a: any) => `${a.firstName || ''} ${a.lastName || ''}`.trim()).join(', ') 
+            author: `${submission.mainAuthor?.firstName || 'Unknown'} ${submission.mainAuthor?.lastName || ''}`.trim(),
+            coAuthors: (submission.coAuthors && Array.isArray(submission.coAuthors))
+                ? submission.coAuthors.map((a: any) => `${a.firstName || ''} ${a.lastName || ''}`.trim()).filter(n => !!n).join(', ')
                 : null,
             coverImage: coverImageUrl,
             category: publicationDetails.category || 'General',
@@ -1587,27 +1588,31 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
         await transaction.commit();
 
         // Notify author
-        const authorEmail = submission.mainAuthor.email;
-        const authorName = `${submission.mainAuthor.firstName} ${submission.mainAuthor.lastName}`;
+        const authorEmail = submission.mainAuthor?.email;
+        const authorName = `${submission.mainAuthor?.firstName || 'Unknown'} ${submission.mainAuthor?.lastName || ''}`.trim();
 
-        // Find user by email for DB notification (optional)
-        const authorUser = await User.findOne({ where: { email: authorEmail, isActive: true } });
+        console.log(`[Publish-TextBook] Notification phase for book "${submission.bookTitle}", author email: ${authorEmail || 'MISSING'}`);
 
-        if (authorUser) {
-            // DB Notification (only if user exists)
-            await createNotification(
-                authorUser.id,
-                user.id,
-                NotificationType.SUCCESS,
-                NotificationCategory.TEXTBOOK_SUBMISSION,
-                'Text Book Published',
-                `Congratulations! Your text book "${submission.bookTitle}" has been published!`,
-                submission.id
-            );
-        }
+        if (!authorEmail || authorEmail.trim() === '' || authorEmail.toLowerCase() === 'n/a' || authorEmail.toLowerCase() === 'undefined') {
+            console.warn(`[Publish-TextBook] Skipping author notifications for submission ${submission.id} due to missing or invalid email.`);
+        } else {
+            // Find user by email for DB notification (optional)
+            const authorUser = await User.findOne({ where: { email: authorEmail, isActive: true } });
 
-        // Email (always send to the email from the form)
-        if (authorEmail && authorEmail.trim() !== '' && authorEmail.toLowerCase() !== 'n/a' && authorEmail.toLowerCase() !== 'not available') {
+            if (authorUser) {
+                // DB Notification (only if user exists)
+                await createNotification(
+                    authorUser.id,
+                    user.id,
+                    NotificationType.SUCCESS,
+                    NotificationCategory.TEXTBOOK_SUBMISSION,
+                    'Text Book Published',
+                    `Congratulations! Your text book "${submission.bookTitle}" has been published!`,
+                    submission.id
+                );
+            }
+
+            // Email (always send to the email from the form)
             sendTextBookPublishedEmail(
                 authorEmail,
                 authorName,
@@ -1618,7 +1623,7 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
                     doi: submission.doiNumber || undefined,
                     submissionId: submission.id
                 }
-            ).catch(err => console.error('Error emailing author:', err));
+            ).catch(err => console.error('[Publish-TextBook] Error emailing author:', err));
         }
 
         return sendSuccess(res, submission, 'Text book published successfully');

@@ -29,7 +29,7 @@ class TemplateService {
                     const enrichedData = {
                         currentYear,
                         year: currentYear, // alias for compatibility
-                        ...data
+                        ...(data || {})
                     };
                     const subject = this.substituteVariables(defaultTpl.subject, enrichedData);
                     const content = this.substituteVariables(defaultTpl.content, enrichedData);
@@ -50,7 +50,7 @@ class TemplateService {
             const enrichedData = {
                 currentYear,
                 year: currentYear, // alias for compatibility
-                ...data
+                ...(data || {})
             };
 
             const subject = this.substituteVariables(template.subject, enrichedData);

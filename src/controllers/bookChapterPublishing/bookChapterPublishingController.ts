@@ -292,9 +292,11 @@ const sendPublicationNotifications = async (
     try {
         const bookTitle = data?.bookTitle || (submission ? await resolveDisplayBookTitle(submission.bookTitle) : 'N/A');
         const isbn = data?.isbn || submission?.isbn || 'N/A';
-        const doi = data?.doi || submission?.doi || 'N/A';
-        const editors = data?.editors || submission?.editors || [];
-        const keywords = data?.keywords || submission?.keywords || [];
+        const doi = data?.doi || (submission as any)?.doi || 'N/A';
+        const editors = data?.editors || (submission as any)?.editors || [];
+        const keywords = data?.keywords || (submission as any)?.keywords || [];
+
+        console.log(`[Publication-Notif] Starting for: "${bookTitle}", ISBN: ${isbn}`);
         const publicationDate = new Date().toLocaleDateString();
         const link = `${process.env.FRONTEND_URL}/bookchapters`; // Update if needed based on FE routes
 
@@ -410,39 +412,41 @@ const sendIndividualChapterNotifications = async (
 
             // Deduplicate emails per chapter
             const chapterEmailRecipients = new Map<string, string>(); // Email -> Name
+            const authors = (chapter.authorDetails || []) as any[];
+            if (authors.length === 0) {
+                console.warn(`[IndividualNotif] No author records found for chapter: "${chapter.title}"`);
+            }
 
-            const authors = chapter.authorDetails || [];
             for (const author of authors) {
-                if (author.email) {
-                    const email = author.email.toLowerCase().trim();
+                if (!author || !author.name) continue;
+                const email = (author.email || '').toLowerCase().trim();
+                if (email) {
                     if (!chapterEmailRecipients.has(email)) {
                         chapterEmailRecipients.set(email, author.name);
                     }
+                } else {
+                    console.warn(`[IndividualNotif] Skipping author ${author.name} (no email)`);
                 }
             }
 
-            if (chapterEmailRecipients.size === 0) {
-                console.log(`[IndividualChapterNotifications] No authors with emails found for chapter: "${chapterTitle}"`);
-                continue;
-            }
+            const publicationDate = new Date().toLocaleDateString();
 
-            // Send emails to all authors of this specific chapter
             for (const [email, name] of chapterEmailRecipients.entries()) {
-                console.log(`[IndividualChapterNotifications] Attempting to send email to ${email} for chapter: "${chapterTitle}"`);
+                console.log(`[IndividualNotif] Sending to chapter author: ${email}`);
                 sendIndividualChapterPublishedEmail(email, {
                     authorName: name,
                     bookTitle: book.title,
-                    chapterTitle,
-                    chapterNumber,
+                    chapterTitle: chapter.title,
+                    chapterNumber: chapter.chapterNumber || '',
                     isbn: book.isbn,
                     doi: book.doi || 'N/A',
                     publicationDate,
                     link: baseLink
-                }).catch(err => console.error(`❌ Individual chapter email failed for ${email} (Chapter: ${chapterTitle}):`, err));
+                }).catch(err => console.error(`[IndividualNotif] Failed for ${email}:`, err));
             }
         }
-    } catch (err) {
-        console.error('❌ Error in sendIndividualChapterNotifications:', err);
+    } catch (error) {
+        console.error('❌ sendIndividualChapterNotifications error:', error);
     }
 };
 
@@ -798,7 +802,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
             // 3. Match TOC titles against found approved submissions' actual chapter titles
             const approvedTitlesSet = new Set<string>();
-            
+
             const validSubmissionIds = allSubmissionsForBook.map((s: any) => s.id);
             if (validSubmissionIds.length > 0) {
                 const IndividualChapter = (await import('../../models/individualChapter')).default;
@@ -1022,7 +1026,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 { isPublished: true },
                 {
                     where: {
-                        [Op.or]: tocTitles.map(title => 
+                        [Op.or]: tocTitles.map(title =>
                             Sequelize.where(
                                 Sequelize.fn('LOWER', Sequelize.fn('TRIM', Sequelize.col('chapterTitle'))),
                                 title
@@ -1112,29 +1116,34 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor
         } = req.body;
 
-        console.log(`[Publish-Direct] Request for book: "${title}", ISBN: ${isbn}`);
+        if (!title || !isbn) {
+            console.error(`[Publish-Direct] ❌ Validation failed: Title="${title}", ISBN="${isbn}"`);
+            await transaction.rollback();
+            return sendError(res, 'Title and ISBN are required to publish directly.', 400);
+        }
+
+        const resolvedIsbn = isbn.toString().trim();
+        const resolvedTitle = title.toString().trim();
+        const resolvedAuthor = (author || '').toString().trim();
+
+        console.log(`[Publish-Direct] Request for book: "${resolvedTitle}", ISBN: ${resolvedIsbn}`);
         console.log(`[Publish-Direct] editors: ${JSON.stringify(editors)}`);
         console.log(`[Publish-Direct] authorBiographies provided: ${!!authorBiographies}`);
         console.log(`[Publish-Direct] editorBiographies provided: ${!!editorBiographies}`);
         console.log(`[Publish-Direct] tableContents items count: ${Array.isArray(parseJsonField(tableContents)) ? parseJsonField(tableContents).length : 0}`);
 
-        if (!title || !isbn) {
-            await transaction.rollback();
-            return sendError(res, 'Title and ISBN are required to publish directly.', 400);
-        }
-
         // Build the record data
         const bookData = {
-            bookChapterSubmissionId: null, // No submission exists!
-            title: (title || '').toString().trim(),
-            author: (author || '').toString().trim(),
-            mainAuthor: mainAuthor || null,
-            coAuthors: coAuthors || null,
-            coAuthorsData: coAuthorsData || null,
-            coverImage: coverImage || null,
-            category: category || 'Engineering & Management',
-            description: description || '',
+            bookChapterSubmissionId: null,
+            title: resolvedTitle,
+            author: resolvedAuthor,
+            mainAuthor: parseJsonField(mainAuthor),
+            coAuthors: (coAuthors || '').toString().trim() || null,
+            coAuthorsData: parseJsonField(coAuthorsData) || [],
             editors: Array.isArray(editors) ? editors : (editors ? [editors] : []),
+            primaryEditor: primaryEditor || null,
+            category: category || 'General',
+            description: description || '',
             isbn: (isbn || '').toString().trim(),
             publishedDate: publishedDate || new Date().getFullYear().toString(),
             pages: pages ? parseInt(pages) : 0,
@@ -1154,7 +1163,6 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             amazonLink: amazonLink || null,
             keywords: keywords || [],
             frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs), transaction),
-            primaryEditor: primaryEditor || null,
             isHidden: false,
             isFeatured: false,
         };
