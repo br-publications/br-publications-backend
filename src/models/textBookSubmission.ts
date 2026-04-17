@@ -127,7 +127,7 @@ class TextBookSubmission
         if (this.mainAuthor.isCorrespondingAuthor) {
             return this.mainAuthor;
         }
-        if (this.coAuthors) {
+        if (this.coAuthors && Array.isArray(this.coAuthors)) {
             const corresponding = this.coAuthors.find(a => a.isCorrespondingAuthor);
             if (corresponding) return corresponding;
         }
@@ -135,7 +135,7 @@ class TextBookSubmission
     }
 
     public getTotalAuthorsCount(): number {
-        return 1 + (this.coAuthors?.length || 0);
+        return 1 + (Array.isArray(this.coAuthors) ? this.coAuthors.length : 0);
     }
 
     public canRequestRevision(): boolean {

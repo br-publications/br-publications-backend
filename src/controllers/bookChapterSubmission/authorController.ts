@@ -64,7 +64,7 @@ export const submitBookChapter = async (req: AuthRequest, res: Response) => {
         };
 
 
-        const coAuthors = coAuthorsRaw ? coAuthorsRaw.map((author: any) => ({
+        const coAuthors = (coAuthorsRaw && Array.isArray(coAuthorsRaw)) ? coAuthorsRaw.map((author: any) => ({
             ...author,
             isCorrespondingAuthor: author.isCorrespondingAuthor === true || author.isCorrespondingAuthor === 'true'
         })) : null;

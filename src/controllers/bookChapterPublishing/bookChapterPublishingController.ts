@@ -174,7 +174,7 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
  * Helper: Process frontmatterPdfs to convert temp PDFs into permanent DB storage
  */
 const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any) => {
-    if (!frontmatter || typeof frontmatter !== 'object') return frontmatter;
+    if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) return frontmatter;
 
     for (const key of Object.keys(frontmatter)) {
         const item = frontmatter[key];
@@ -1112,6 +1112,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor
         } = req.body;
 
+        console.log(`[Publish-Direct] Request for book: "${title}", ISBN: ${isbn}`);
+        console.log(`[Publish-Direct] editors: ${JSON.stringify(editors)}`);
+        console.log(`[Publish-Direct] authorBiographies provided: ${!!authorBiographies}`);
+        console.log(`[Publish-Direct] editorBiographies provided: ${!!editorBiographies}`);
+        console.log(`[Publish-Direct] tableContents items count: ${Array.isArray(parseJsonField(tableContents)) ? parseJsonField(tableContents).length : 0}`);
+
         if (!title || !isbn) {
             await transaction.rollback();
             return sendError(res, 'Title and ISBN are required to publish directly.', 400);
@@ -1158,7 +1164,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         // --- Populate Relational Tables (Normalized Data) ---
         const authorMap = new Map<string, any>();
         const bios = parseJsonField(authorBiographies) || [];
+        console.log(`[Publish-Direct] Normalized ${bios.length} author biographies.`);
         for (const bio of bios) {
+            if (!bio || typeof bio !== 'object' || !bio.authorName) {
+                if (bio) console.warn(`[Publish-Direct] Skipping entry in authorBiographies:`, bio);
+                continue;
+            }
             let pAuthor = await PublishedAuthor.findOne({
                 where: { name: bio.authorName, email: bio.email || null },
                 transaction
@@ -1182,7 +1193,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         // --- Populate Editor Relational Tables ---
 
         const editorBios = parseJsonField(editorBiographies) || [];
+        console.log(`[Publish-Direct] Normalized ${editorBios.length} editor biographies.`);
         for (const bio of editorBios) {
+            if (!bio || typeof bio !== 'object' || !bio.authorName) {
+                if (bio) console.warn(`[Publish-Direct] Skipping entry in editorBiographies:`, bio);
+                continue;
+            }
             let pEditor = await PublishedEditor.findOne({
                 where: { name: bio.authorName, email: bio.email || null },
                 transaction
@@ -1203,7 +1219,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         }
 
         const toc = bookData.tableContents || [];
+        console.log(`[Publish-Direct] Processing ${toc.length} TOC chapters for individual records.`);
         for (const item of toc) {
+            if (!item || typeof item !== 'object' || !item.title) {
+                console.warn(`[Publish-Direct] Skipping invalid TOC item for relational sync:`, item);
+                continue;
+            }
             const individualChapter = await PublishedIndividualChapter.create({
                 publishedBookChapterId: publishedChapter.id,
                 title: item.title,

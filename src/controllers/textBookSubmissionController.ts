@@ -1550,7 +1550,9 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
             bookType: BookType.TEXTBOOK,
             title: submission.bookTitle,
             author: `${submission.mainAuthor.firstName} ${submission.mainAuthor.lastName}`,
-            coAuthors: submission.coAuthors ? submission.coAuthors.map((a: any) => `${a.firstName} ${a.lastName}`).join(', ') : null,
+            coAuthors: (submission.coAuthors && Array.isArray(submission.coAuthors)) 
+                ? submission.coAuthors.map((a: any) => `${a.firstName || ''} ${a.lastName || ''}`.trim()).join(', ') 
+                : null,
             coverImage: coverImageUrl,
             category: publicationDetails.category || 'General',
             description: publicationDetails.description || '',
