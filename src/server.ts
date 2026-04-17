@@ -25,6 +25,7 @@ import {
 // import sequelize from './config/database';
 
 const app: Application = express();
+app.set('strict routing', false);
 const PORT = process.env.PORT || 5000;
 
 // Enable 'trust proxy' for correct client IP detection behind Hostinger/Nginx proxy
@@ -133,6 +134,9 @@ app.use(cors({
     }
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+  optionsSuccessStatus: 204
 }));
 
 /**
@@ -248,6 +252,7 @@ const startServer = async () => {
     const PublishedAuthor = (await import('./models/publishedAuthor')).default;
     const PublishedIndividualChapter = (await import('./models/publishedIndividualChapter')).default;
     const PublishedFile = (await import('./models/publishedFile')).default;
+    const PublishedEditor = (await import('./models/publishedEditor')).default;
 
     // Custom role models
     const { Role, Permission, RolePermission, UserCustomRole } = await import('./models/customRole');
@@ -302,6 +307,7 @@ const startServer = async () => {
       PublishedAuthor,
       PublishedIndividualChapter,
       PublishedFile,
+      PublishedEditor,
       LocalFile,
     };
 
