@@ -868,13 +868,16 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         const editorBios = parseJsonField(editorBiographies) || [];
         for (const bio of editorBios) {
+            const editorName = bio.editorName || bio.authorName;
+            if (!editorName) continue;
+
             let pEditor = await PublishedEditor.findOne({
-                where: { name: bio.authorName, email: bio.email || null },
+                where: { name: editorName, email: bio.email || null },
                 transaction
             });
             if (!pEditor) {
                 await PublishedEditor.create({
-                    name: bio.authorName,
+                    name: editorName,
                     email: bio.email || null,
                     affiliation: bio.affiliation || '',
                     biography: bio.biography || '',
@@ -1203,17 +1206,18 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         const editorBios = parseJsonField(editorBiographies) || [];
         console.log(`[Publish-Direct] Normalized ${editorBios.length} editor biographies.`);
         for (const bio of editorBios) {
-            if (!bio || typeof bio !== 'object' || !bio.authorName) {
+            const editorName = bio.editorName || bio.authorName;
+            if (!bio || typeof bio !== 'object' || !editorName) {
                 if (bio) console.warn(`[Publish-Direct] Skipping entry in editorBiographies:`, bio);
                 continue;
             }
             let pEditor = await PublishedEditor.findOne({
-                where: { name: bio.authorName, email: bio.email || null },
+                where: { name: editorName, email: bio.email || null },
                 transaction
             });
             if (!pEditor) {
                 await PublishedEditor.create({
-                    name: bio.authorName,
+                    name: editorName,
                     email: bio.email || null,
                     affiliation: bio.affiliation || '',
                     biography: bio.biography || '',
@@ -1754,12 +1758,15 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
         if (chapter.editorBiographies) {
             const editorBios = chapter.editorBiographies as any[];
             for (const bio of editorBios) {
+                const editorName = bio.editorName || bio.authorName;
+                if (!editorName) continue;
+
                 let pEditor = await PublishedEditor.findOne({
-                    where: { name: bio.authorName, email: bio.email || null }
+                    where: { name: editorName, email: bio.email || null }
                 });
                 if (!pEditor) {
                     await PublishedEditor.create({
-                        name: bio.authorName,
+                        name: editorName,
                         email: bio.email || null,
                         affiliation: bio.affiliation || '',
                         biography: bio.biography || '',
