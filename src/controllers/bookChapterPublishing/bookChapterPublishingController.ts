@@ -861,7 +861,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
         }
 
         // --- Populate Editor Relational Tables ---
-        const { default: PublishedEditor } = await import('../../models/publishedEditor');
+
         const editorBios = parseJsonField(editorBiographies) || [];
         for (const bio of editorBios) {
             let pEditor = await PublishedEditor.findOne({
@@ -1120,8 +1120,8 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         // Build the record data
         const bookData = {
             bookChapterSubmissionId: null, // No submission exists!
-            title: title.trim(),
-            author: author.trim(),
+            title: (title || '').toString().trim(),
+            author: (author || '').toString().trim(),
             mainAuthor: mainAuthor || null,
             coAuthors: coAuthors || null,
             coAuthorsData: coAuthorsData || null,
@@ -1129,7 +1129,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             category: category || 'Engineering & Management',
             description: description || '',
             editors: Array.isArray(editors) ? editors : (editors ? [editors] : []),
-            isbn: isbn.trim(),
+            isbn: (isbn || '').toString().trim(),
             publishedDate: publishedDate || new Date().getFullYear().toString(),
             pages: pages ? parseInt(pages) : 0,
             indexedIn: indexedIn || null,
@@ -1180,7 +1180,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
         }
 
         // --- Populate Editor Relational Tables ---
-        const { default: PublishedEditor } = await import('../../models/publishedEditor');
+
         const editorBios = parseJsonField(editorBiographies) || [];
         for (const bio of editorBios) {
             let pEditor = await PublishedEditor.findOne({
@@ -1265,10 +1265,10 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
 
         return sendSuccess(res, { publishedChapter }, 'Direct book chapter published successfully');
 
-    } catch (error) {
+    } catch (error: any) {
         await transaction.rollback();
         console.error('❌ publishDirectBookChapter error:', error);
-        return sendError(res, 'Failed to publish direct book chapter', 500);
+        return sendError(res, `Failed to publish direct book chapter: ${error.message || 'Unknown error'}`, 500);
     }
 };
 

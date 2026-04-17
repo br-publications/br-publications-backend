@@ -81,6 +81,18 @@ router.get('/', controller.getAllPublishedChapters);
 /** GET /api/book-chapter-publishing/categories - Unique category list */
 router.get('/categories', controller.getCategories);
 
+/** GET /api/book-chapter-publishing/authors - List all authors */
+router.get('/authors', controller.getAllPublishedAuthors);
+
+/** GET /api/book-chapter-publishing/authors/:id - Author detail with chapters */
+router.get('/authors/:id', controller.getPublishedAuthorById);
+
+/** GET /api/book-chapter-publishing/editors - List all editors */
+router.get('/editors', controller.getAllPublishedEditors);
+
+/** GET /api/book-chapter-publishing/editors/:id - Editor detail with books */
+router.get('/editors/:id', controller.getPublishedEditorById);
+
 /**
  * @swagger
  * /api/book-chapter-publishing/{id}:
@@ -98,18 +110,6 @@ router.get('/categories', controller.getCategories);
  */
 /** GET /api/book-chapter-publishing/:id - Full detail of one published chapter */
 router.get('/:id', controller.getPublishedChapterById);
-
-/** GET /api/book-chapter-publishing/authors - List all authors */
-router.get('/authors', controller.getAllPublishedAuthors);
-
-/** GET /api/book-chapter-publishing/authors/:id - Author detail with chapters */
-router.get('/authors/:id', controller.getPublishedAuthorById);
-
-/** GET /api/book-chapter-publishing/editors - List all editors */
-router.get('/editors', controller.getAllPublishedEditors);
-
-/** GET /api/book-chapter-publishing/editors/:id - Editor detail with books */
-router.get('/editors/:id', controller.getPublishedEditorById);
 
 /** GET /api/book-chapter-publishing/:id/cover - Serve cover image binary */
 router.get('/:id/cover', controller.getChapterCover);

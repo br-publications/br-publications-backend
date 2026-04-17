@@ -217,7 +217,7 @@ class PublishedBookChapter
                     allowNull: true,
                 },
                 coverImage: {
-                    type: DataTypes.TEXT, // base64 data URL
+                    type: DataTypes.TEXT('long'), // base64 data URL
                     allowNull: true,
                 },
                 synopsis: {
