@@ -122,7 +122,7 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                     field: 'co_authors',
                 },
                 coverImage: {
-                    type: DataTypes.TEXT,
+                    type: DataTypes.TEXT('long'),
                     allowNull: true,
                     field: 'cover_image',
                 },
