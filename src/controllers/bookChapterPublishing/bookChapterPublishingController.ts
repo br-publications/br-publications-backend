@@ -867,6 +867,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
         // --- Populate Editor Relational Tables ---
 
         const editorBios = parseJsonField(editorBiographies) || [];
+        const editorRecords: any[] = [];
         for (const bio of editorBios) {
             const editorName = bio.editorName || bio.authorName;
             if (!editorName) continue;
@@ -876,7 +877,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 transaction
             });
             if (!pEditor) {
-                await PublishedEditor.create({
+                pEditor = await PublishedEditor.create({
                     name: editorName,
                     email: bio.email || null,
                     affiliation: bio.affiliation || '',
@@ -888,6 +889,12 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                     biography: bio.biography || pEditor.biography,
                 }, { transaction });
             }
+            if (pEditor) editorRecords.push(pEditor);
+        }
+
+        // Synchronize the join table for editors
+        if (editorRecords.length > 0) {
+            await (publishedChapter as any).setBiographyEditors(editorRecords, { transaction });
         }
 
         // Clear existing relational chapters for this book record if updating
@@ -1205,6 +1212,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
 
         const editorBios = parseJsonField(editorBiographies) || [];
         console.log(`[Publish-Direct] Normalized ${editorBios.length} editor biographies.`);
+        const editorRecords: any[] = [];
         for (const bio of editorBios) {
             const editorName = bio.editorName || bio.authorName;
             if (!bio || typeof bio !== 'object' || !editorName) {
@@ -1216,7 +1224,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
                 transaction
             });
             if (!pEditor) {
-                await PublishedEditor.create({
+                pEditor = await PublishedEditor.create({
                     name: editorName,
                     email: bio.email || null,
                     affiliation: bio.affiliation || '',
@@ -1228,6 +1236,12 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
                     biography: bio.biography || pEditor.biography,
                 }, { transaction });
             }
+            if (pEditor) editorRecords.push(pEditor);
+        }
+
+        // Synchronize the join table for editors
+        if (editorRecords.length > 0) {
+            await (publishedChapter as any).setBiographyEditors(editorRecords, { transaction });
         }
 
         const toc = bookData.tableContents || [];
@@ -1757,6 +1771,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
         // 2. Editors
         if (chapter.editorBiographies) {
             const editorBios = chapter.editorBiographies as any[];
+            const editorRecords: any[] = [];
             for (const bio of editorBios) {
                 const editorName = bio.editorName || bio.authorName;
                 if (!editorName) continue;
@@ -1765,7 +1780,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
                     where: { name: editorName, email: bio.email || null }
                 });
                 if (!pEditor) {
-                    await PublishedEditor.create({
+                    pEditor = await PublishedEditor.create({
                         name: editorName,
                         email: bio.email || null,
                         affiliation: bio.affiliation || '',
@@ -1777,6 +1792,14 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
                         biography: bio.biography || pEditor.biography,
                     });
                 }
+                if (pEditor) editorRecords.push(pEditor);
+            }
+
+            // Sync relational link between editor and book record (join table)
+            // Note: In manual update, we don't have a shared transaction easily here,
+            // but chapter.setBiographyEditors handles the relational sync.
+            if (editorRecords.length > 0) {
+                await (chapter as any).setBiographyEditors(editorRecords);
             }
         }
 
@@ -2238,7 +2261,7 @@ export const getPublishedEditorById = async (req: Request, res: Response) => {
                 {
                     model: PublishedBookChapter,
                     as: 'books',
-                    attributes: ['id', 'title', 'isbn'],
+                    attributes: ['id', 'title', 'isbn', 'author', 'releaseDate', 'publishedDate', 'description', 'coverImage'],
                     through: { attributes: [] }
                 }
             ]
