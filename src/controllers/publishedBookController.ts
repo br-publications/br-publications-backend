@@ -4,8 +4,26 @@ import PublishedBook from '../models/publishedBook';
 import TextBookFile from '../models/textBookFile';
 import { sendSuccess, sendError } from '../utils/responseHandler';
 import sharp from 'sharp';
-// import path from 'path';
-// import fs from 'fs/promises';
+
+/**
+ * Helper to ensure JSON fields are parsed if they come as strings from the DB
+ */
+const ensureParsedJson = (book: any) => {
+    if (!book) return book;
+    const jsonFields = ['pricing', 'scope', 'tableContents', 'authorBiographies', 'archives'];
+    const data = book.toJSON ? book.toJSON() : book;
+    
+    jsonFields.forEach(field => {
+        if (data[field] && typeof data[field] === 'string') {
+            try {
+                data[field] = JSON.parse(data[field]);
+            } catch (e) {
+                console.warn(`[PublishedBookController] Failed to parse JSON for field ${field}:`, e);
+            }
+        }
+    });
+    return data;
+};
 
 /**
  * @route GET /api/books
@@ -67,7 +85,7 @@ export const getAllBooks = async (req: Request, res: Response) => {
         });
 
         return sendSuccess(res, {
-            books: rows,
+            books: rows.map(ensureParsedJson),
             pagination: {
                 total: count,
                 page,
@@ -100,7 +118,7 @@ export const getBookById = async (req: Request, res: Response) => {
             return sendError(res, 'Book not found', 404);
         }
 
-        return sendSuccess(res, book, 'Book details retrieved successfully');
+        return sendSuccess(res, ensureParsedJson(book), 'Book details retrieved successfully');
 
     } catch (error) {
         console.error('Error fetching book details:', error);

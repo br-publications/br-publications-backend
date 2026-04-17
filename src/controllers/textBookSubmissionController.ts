@@ -1540,20 +1540,48 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
 
         // Create PublishedBook record
         const {
-            pricing, // Extract pricing to store in its own column
-            ...otherDetails
+            pricing,
         } = publicationDetails;
 
+        // Defensive parsing of JSON fields if they are strings
+        let parsedMainAuthor = submission.mainAuthor;
+        if (typeof parsedMainAuthor === 'string') {
+            try {
+                parsedMainAuthor = JSON.parse(parsedMainAuthor);
+            } catch (e) {
+                console.error('[PublishTextBook] Error parsing mainAuthor:', e);
+            }
+        }
+
+        let parsedCoAuthors = submission.coAuthors;
+        if (typeof parsedCoAuthors === 'string') {
+            try {
+                parsedCoAuthors = JSON.parse(parsedCoAuthors);
+            } catch (e) {
+                console.error('[PublishTextBook] Error parsing coAuthors:', e);
+            }
+        }
+
+        // Determine correct author name (Prefer request payload, fallback to submission)
+        const authorName = publicationDetails.author ||
+            `${parsedMainAuthor?.firstName || 'Unknown'} ${parsedMainAuthor?.lastName || ''}`.trim();
+
+        // Properly map co-authors to comma-separated names
+        let coAuthorsString = null;
+        if (Array.isArray(parsedCoAuthors)) {
+            coAuthorsString = parsedCoAuthors
+                .map((a: any) => `${a.firstName || ''} ${a.lastName || ''}`.trim())
+                .filter(n => !!n)
+                .join(', ');
+        }
 
         await PublishedBook.create({
             submissionId: null, // This is for chapters
             textBookSubmissionId: submission.id,
             bookType: BookType.TEXTBOOK,
             title: submission.bookTitle,
-            author: `${submission.mainAuthor?.firstName || 'Unknown'} ${submission.mainAuthor?.lastName || ''}`.trim(),
-            coAuthors: (submission.coAuthors && Array.isArray(submission.coAuthors))
-                ? submission.coAuthors.map((a: any) => `${a.firstName || ''} ${a.lastName || ''}`.trim()).filter(n => !!n).join(', ')
-                : null,
+            author: authorName,
+            coAuthors: coAuthorsString,
             coverImage: coverImageUrl,
             category: publicationDetails.category || 'General',
             description: publicationDetails.description || '',
@@ -1588,8 +1616,9 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
         await transaction.commit();
 
         // Notify author
-        const authorEmail = submission.mainAuthor?.email;
-        const authorName = `${submission.mainAuthor?.firstName || 'Unknown'} ${submission.mainAuthor?.lastName || ''}`.trim();
+        const authorEmail = parsedMainAuthor?.email;
+        // Reuse authorName from above
+
 
         console.log(`[Publish-TextBook] Notification phase for book "${submission.bookTitle}", author email: ${authorEmail || 'MISSING'}`);
 
