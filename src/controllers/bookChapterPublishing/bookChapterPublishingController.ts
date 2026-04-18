@@ -1319,48 +1319,6 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
     }
 };
 
-/**
- * @route GET /api/book-chapter-publishing/download/:fileId
- * @desc  Fetch a published PDF from DB with disk caching.
- * @access Public / Private (based on requirement — currently public for authors/readers)
- */
-export const downloadPublishedFile = async (req: Request, res: Response) => {
-    const { fileId } = req.params;
-
-    if (!fileId) return sendError(res, 'File ID is required', 400);
-
-    const cacheDir = path.resolve(process.cwd(), 'uploads/published_cache', fileId);
-
-    try {
-        // 1. Check disk cache first
-        if (fs.existsSync(cacheDir)) {
-            const files = fs.readdirSync(cacheDir);
-            if (files.length > 0) {
-                const filePath = path.join(cacheDir, files[0]);
-                return res.sendFile(filePath);
-            }
-        }
-
-        // 2. Not in cache -> Fetch from DB
-        const pubFile = await PublishedFile.findByPk(fileId);
-        if (!pubFile) return sendError(res, 'File not found in permanent storage', 404);
-
-        // 3. Save to cache disk
-        if (!fs.existsSync(cacheDir)) {
-            fs.mkdirSync(cacheDir, { recursive: true });
-        }
-
-        const filePath = path.join(cacheDir, pubFile.fileName);
-        fs.writeFileSync(filePath, pubFile.fileData);
-
-        // 4. Serve file
-        return res.sendFile(filePath);
-
-    } catch (error) {
-        console.error('❌ downloadPublishedFile error:', error);
-        return sendError(res, 'Failed to download file from permanent storage', 500);
-    }
-};
 
 // ============================================================
 // PUBLIC: Get all published book chapters
@@ -1577,8 +1535,67 @@ export const getChapterCoverThumbnail = async (req: Request, res: Response) => {
 // ============================================================
 
 /**
+ * @route GET /api/book-chapter-publishing/download/:fileId
+ * @desc  Fetch any published file or temporary upload by its ID/UUID
+ *        This is used for universal previews (saved or unsaved).
+ * @access Public
+ */
+export const downloadPublishedFile = async (req: Request, res: Response) => {
+    try {
+        const { fileId } = req.params;
+        if (!fileId) return sendError(res, 'File ID is required', 400);
+
+        let buffer: Buffer | null = null;
+        let fileName = 'file.pdf';
+        let mimeType = 'application/pdf';
+
+        // 1. Check if it's a numeric ID (PublishedFile)
+        if (!isNaN(parseInt(fileId))) {
+            const pubFile = await PublishedFile.findByPk(fileId);
+            if (pubFile) {
+                buffer = pubFile.fileData;
+                fileName = pubFile.fileName;
+                mimeType = pubFile.mimeType;
+            }
+        } 
+        
+        // 2. If not found or if it's a UUID, check TemporaryUpload table
+        if (!buffer) {
+            const tempUpload = await TemporaryUpload.findByPk(fileId);
+            if (tempUpload) {
+                buffer = tempUpload.fileData;
+                fileName = tempUpload.fileName;
+                mimeType = tempUpload.mimeType;
+            }
+        }
+
+        // 3. Last fallback: check PublishedFile by UUID string if applicable
+        if (!buffer) {
+            const pubFile = await PublishedFile.findOne({ where: { id: fileId } });
+            if (pubFile) {
+                buffer = pubFile.fileData;
+                fileName = pubFile.fileName;
+                mimeType = pubFile.mimeType;
+            }
+        }
+
+        if (!buffer) return sendError(res, 'File not found', 404);
+
+        res.setHeader('Content-Type', mimeType);
+        res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+        res.setHeader('Content-Length', buffer.length.toString());
+        return res.send(buffer);
+
+    } catch (error) {
+        console.error('❌ downloadPublishedFile error:', error);
+        return sendError(res, 'Failed to download file', 500);
+    }
+};
+
+/**
  * @route GET /api/book-chapter-publishing/:id/toc/:chapterIndex/pdf
- * @desc  Stream the PDF stored (as base64) for a specific TOC chapter
+ * @desc  Stream the PDF stored for a specific TOC chapter. 
+ *        Supports optional ?tempKey override for unsaved previews.
  * @access Public
  */
 export const getChapterPdf = async (req: Request, res: Response) => {
@@ -1600,6 +1617,20 @@ export const getChapterPdf = async (req: Request, res: Response) => {
         const tocEntry = toc[chapterIndex];
 
         if (!tocEntry) return sendError(res, 'Chapter not found in TOC', 404);
+
+        // --- Live Preview Override ---
+        // If the frontend provides a tempKey, we serve that directly instead of 
+        // what's in the database. This allows "live preview" of re-uploads.
+        const tempKey = req.query.tempKey as string;
+        if (tempKey) {
+            const tempUpload = await TemporaryUpload.findByPk(tempKey);
+            if (tempUpload) {
+                res.setHeader('Content-Type', 'application/pdf');
+                res.setHeader('Content-Disposition', `inline; filename="${tempUpload.fileName}"`);
+                res.setHeader('Content-Length', tempUpload.fileData.length.toString());
+                return res.send(tempUpload.fileData);
+            }
+        }
 
         let buffer: Buffer;
         let filename = tocEntry.pdfName || `chapter-${chapterIndex + 1}.pdf`;
@@ -1703,13 +1734,8 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             mergedFrontmatterPdfs = await processTempPdfsForFrontmatter(merged, transaction);
         }
 
-        if (editorBiographies) {
-            const incoming = parseJsonField(editorBiographies) || [];
-            // For biography arrays, we generally overwrite with the new list 
-            // but we could implement similar protection if needed.
-            // For now, we'll keep it simple as editors are often managed as a set.
-            chapter.editorBiographies = incoming;
-        }
+        const parsedTableContents = tableContents ? await processTempPdfsForTableContents(parseJsonField(tableContents), transaction) : undefined;
+        const parsedEditorBiographies = editorBiographies ? parseJsonField(editorBiographies) : undefined;
 
         await chapter.update({
             ...(title && { title }),
@@ -1727,7 +1753,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(pricing && { pricing: parseJsonField(pricing) }),
             ...(synopsis && { synopsis: parseJsonField(synopsis) }),
             ...(scope && { scope: parseJsonField(scope) }),
-            ...(tableContents && { tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction) }),
+            ...(parsedTableContents && { tableContents: parsedTableContents }),
             ...(authorBiographies && { authorBiographies: parseJsonField(authorBiographies) }),
             ...(archives && { archives: parseJsonField(archives) }),
             ...(mergedFrontmatterPdfs !== undefined && { frontmatterPdfs: mergedFrontmatterPdfs }),
@@ -1738,8 +1764,45 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(flipkartLink !== undefined && { flipkartLink }),
             ...(amazonLink !== undefined && { amazonLink }),
             ...(keywords !== undefined && { keywords }),
-            ...(editorBiographies && { editorBiographies: parseJsonField(editorBiographies) }),
+            ...(parsedEditorBiographies && { editorBiographies: parsedEditorBiographies }),
         }, { transaction });
+
+        // --- RELATIONAL SYNC (Normalized Data) ---
+        // Synchronize PublishedIndividualChapter table with the (potentially updated) tableContents
+        if (parsedTableContents) {
+            // 1. Wipe old chapters
+            await PublishedIndividualChapter.destroy({
+                where: { publishedBookChapterId: chapter.id },
+                transaction
+            });
+
+            // 2. Re-create from updated JSONB TOC
+            for (const item of parsedTableContents) {
+                const individualChapter = await PublishedIndividualChapter.create({
+                    publishedBookChapterId: chapter.id,
+                    title: item.title,
+                    chapterNumber: item.chapterNumber || null,
+                    authors: item.authors || null,
+                    pagesFrom: item.pagesFrom || item.pages || null,
+                    pagesTo: item.pagesTo || null,
+                    publishedFileId: item.publishedFileId || null,
+                    pdfKey: item.pdfKey || null,
+                    pdfName: item.pdfName || null,
+                    abstract: item.abstract || null,
+                }, { transaction });
+
+                // Link to authors if they exist in relational table
+                if (item.authors) {
+                    const chapterAuthorNames = item.authors.split(',').map((n: string) => n.trim()).filter(Boolean);
+                    for (const name of chapterAuthorNames) {
+                        const authorRecord = await PublishedAuthor.findOne({ where: { name }, transaction });
+                        if (authorRecord) {
+                            await (individualChapter as any).addAuthorDetail(authorRecord, { transaction });
+                        }
+                    }
+                }
+            }
+        }
 
         await transaction.commit();
 
