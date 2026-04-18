@@ -1161,6 +1161,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             releaseDate: releaseDate || null,
             copyright: copyright || null,
             doi: doi || null,
+            coverImage: coverImage || null,
             synopsis: parseJsonField(synopsis),
             scope: parseJsonField(scope),
             tableContents: await processTempPdfsForTableContents(parseJsonField(tableContents), transaction),
@@ -1613,14 +1614,13 @@ export const getChapterPdf = async (req: Request, res: Response) => {
             return sendError(res, 'Table of contents not found', 404);
         }
 
-        const toc = book.tableContents as any[];
-        const tocEntry = toc[chapterIndex];
+        const toc = parseJsonField(book.tableContents) as any[];
+        const tocEntry = toc ? toc[chapterIndex] : undefined;
 
         if (!tocEntry) return sendError(res, 'Chapter not found in TOC', 404);
 
-        // --- Live Preview Override ---
-        // If the frontend provides a tempKey, we serve that directly instead of 
-        // what's in the database. This allows "live preview" of re-uploads.
+        // --- Live Preview Override (tempKey) ---
+        // If the frontend provides a tempKey, serve that directly (unsaved upload preview).
         const tempKey = req.query.tempKey as string;
         if (tempKey) {
             const tempUpload = await TemporaryUpload.findByPk(tempKey);
@@ -1632,12 +1632,24 @@ export const getChapterPdf = async (req: Request, res: Response) => {
             }
         }
 
+        // --- Permanent File Override (fileId query param) ---
+        // The frontend sends ?fileId=<uuid> when the chapter already has a publishedFileId.
+        // This lets callers serve a specific PublishedFile directly, even if the stored
+        // JSONB entry doesn't have publishedFileId populated (e.g. legacy records).
+        const fileIdParam = req.query.fileId as string | undefined;
+        if (fileIdParam) {
+            const cacheDir = path.resolve(process.cwd(), 'uploads/published_cache', id.toString(), 'toc', chapterIndex.toString());
+            const filePath = await getFilePathFromPubFile(fileIdParam, cacheDir);
+            if (filePath) return res.sendFile(filePath);
+            return sendError(res, 'File not found for the provided fileId', 404);
+        }
+
         let buffer: Buffer;
         let filename = tocEntry.pdfName || `chapter-${chapterIndex + 1}.pdf`;
         const cacheDir = path.resolve(process.cwd(), 'uploads/published_cache', id.toString(), 'toc', chapterIndex.toString());
 
         if (tocEntry.publishedFileId) {
-            // Priority: New Permanent DB storage (PublishedFile)
+            // Priority: Permanent DB storage (PublishedFile)
             const filePath = await getFilePathFromPubFile(tocEntry.publishedFileId, cacheDir);
             if (filePath) return res.sendFile(filePath);
             else return sendError(res, 'Chapter PDF not found in permanent storage', 404);
@@ -1916,7 +1928,7 @@ export const getExtraPdf = async (req: Request, res: Response) => {
             return sendError(res, 'No frontmatter PDFs available', 404);
         }
 
-        const pdfs = book.frontmatterPdfs as Record<string, any>;
+        const pdfs = parseJsonField(book.frontmatterPdfs) as Record<string, any> || {};
 
         // Alias map: normalise requests so older and newer key names both work
         const KEY_ALIASES: Record<string, string[]> = {
