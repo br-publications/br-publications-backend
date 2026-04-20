@@ -27,7 +27,7 @@ export const generalLimiter = rateLimit({
 /** Strict limiter for login endpoint */
 export const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10,                   // max 10 login attempts per 15 min per IP
+  max: 100,                   // max 100 login attempts per 15 min per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -39,8 +39,8 @@ export const loginLimiter = rateLimit({
 
 /** OTP send limiter — prevents OTP flooding */
 export const otpSendLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour window
-  max: 5,                    // max 5 OTP sends per hour per IP
+  windowMs: 15 * 60 * 1000, // 15 minutes window
+  max: 100,                    // max 100 OTP sends per 15 min per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -52,7 +52,7 @@ export const otpSendLimiter = rateLimit({
 /** OTP verification limiter */
 export const otpVerifyLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15,                   // max 15 OTP verifications per window
+  max: 100,                   // max 100 OTP verifications per 15 min per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -64,7 +64,7 @@ export const otpVerifyLimiter = rateLimit({
 /** Registration limiter — prevents bulk account creation */
 export const registerLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,                    // max 5 registrations per hour per IP
+  max: 100,                    // max 100 registrations per hour per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -77,7 +77,7 @@ export const registerLimiter = rateLimit({
 /** Password reset limiter */
 export const passwordResetLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,                    // max 5 password reset requests per hour per IP
+  max: 100,                    // max 100 password reset requests per hour per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
@@ -89,7 +89,7 @@ export const passwordResetLimiter = rateLimit({
 /** Contact/public form limiter */
 export const contactFormLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 10,                   // max 10 inquiry submissions per hour per IP
+  max: 100,                   // max 100 inquiry submissions per hour per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: {
