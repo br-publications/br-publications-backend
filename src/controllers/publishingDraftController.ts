@@ -47,8 +47,8 @@ export const getDraft = async (req: AuthRequest, res: Response) => {
 
         if (id) {
             where.id = id;
-        } else if (submissionId) {
-            where.submissionId = submissionId;
+        } else if (submissionId && !isNaN(Number(submissionId))) {
+            where.submissionId = Number(submissionId);
         } else {
             return sendError(res, 'Missing identifier', 400);
         }
@@ -56,7 +56,7 @@ export const getDraft = async (req: AuthRequest, res: Response) => {
         const draft = await PublishingDraft.findOne({ where });
 
         if (!draft) {
-            return sendError(res, 'Draft not found', 404);
+            return sendSuccess(res, null, 'No draft found');
         }
 
         // Check expiration (5 days)
