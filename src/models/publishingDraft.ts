@@ -50,10 +50,6 @@ class PublishingDraft extends Model<PublishingDraftAttributes, PublishingDraftCr
                     type: DataTypes.INTEGER,
                     allowNull: true,
                     field: 'submission_id',
-                    references: {
-                        model: 'book_chapter_submissions',
-                        key: 'id',
-                    },
                 },
                 draftName: {
                     type: DataTypes.STRING(255),
