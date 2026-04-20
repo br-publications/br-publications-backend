@@ -12,6 +12,7 @@ import swaggerJsdoc from 'swagger-jsdoc';
 import { startTokenCleanup } from './utils/cleanupTokens';
 import { startStorageCleanup } from './utils/cleanupStorage';
 import { startMonthlyReportScheduler } from './utils/monthlyReportScheduler';
+import { startDraftCleanup } from './utils/cleanupDrafts';
 import { seedSuperAdmin } from './utils/superAdminSeeder';
 import {
   generalLimiter,
@@ -234,6 +235,7 @@ const startServer = async () => {
 
     // Book chapter publishing model (separate from textbook PublishedBook)
     const PublishedBookChapter = (await import('./models/publishedBookChapter')).default;
+    const PublishingDraft = (await import('./models/publishingDraft')).default;
 
     // Text book models
     const TextBookSubmission = (await import('./models/textBookSubmission')).default;
@@ -309,6 +311,7 @@ const startServer = async () => {
       PublishedFile,
       PublishedEditor,
       LocalFile,
+      PublishingDraft,
     };
 
     // 2. Initialize each model (handle both 'initialize' and 'initModel' methods)
@@ -339,6 +342,7 @@ const startServer = async () => {
     // Start cleanup jobs
     startTokenCleanup();
     startStorageCleanup();
+    startDraftCleanup();
 
 
     // Start monthly report scheduler
@@ -418,6 +422,10 @@ const startServer = async () => {
     // Stats & Analytics
     const statsRoutes = (await import('./routes/statsRoutes')).default;
     app.use('/api/stats', statsRoutes);
+
+    // Publishing Drafts
+    const publishingDraftRoutes = (await import('./routes/publishingDraftRoutes')).default;
+    app.use('/api/drafts', publishingDraftRoutes);
 
     // Conference
     const conferenceRoutes = (await import('./routes/conferenceRoutes')).default;
