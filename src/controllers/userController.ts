@@ -1299,7 +1299,7 @@ export const impersonateUser = async (req: AuthRequest, res: Response) => {
       email: targetUser.email,
       emailVerified: targetUser.emailVerified,
       role: targetUser.role,
-      profilePicture: targetUser.profilePicture,
+      // Removed profilePicture to avoid 414 Request-URI Too Large errors on redirect
     };
 
 
