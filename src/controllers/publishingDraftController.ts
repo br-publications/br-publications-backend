@@ -95,27 +95,30 @@ export const upsertDraft = async (req: AuthRequest, res: Response) => {
         // Try to find existing draft by ID or SubmissionID
         if (id) {
             draft = await PublishingDraft.findOne({ where: { id, userId: user.id } });
-        } else if (submissionId) {
-            draft = await PublishingDraft.findOne({ where: { submissionId, userId: user.id } });
+        } else if (submissionId && !isNaN(Number(submissionId))) {
+            draft = await PublishingDraft.findOne({ where: { submissionId: Number(submissionId), userId: user.id } });
         }
+
+        const payloadToSave = typeof payload === 'object' ? JSON.stringify(payload) : payload;
+        const finalSubmissionId = (submissionId && !isNaN(Number(submissionId))) ? Number(submissionId) : null;
 
         if (draft) {
             // Update existing
             await draft.update({
                 draftName: draftName || draft.draftName,
                 wizardType: wizardType || draft.wizardType,
-                payload,
-                submissionId: submissionId || draft.submissionId // Allow linking an ID later
+                payload: payloadToSave,
+                submissionId: finalSubmissionId || draft.submissionId // Allow linking an ID later
             });
             return sendSuccess(res, draft, 'Draft updated successfully');
         } else {
             // Create new
             const newDraft = await PublishingDraft.create({
                 userId: user.id,
-                submissionId: submissionId || null,
+                submissionId: finalSubmissionId,
                 draftName: draftName || 'Untitled Draft',
                 wizardType: wizardType || 'PUBLISH_BOOK',
-                payload
+                payload: payloadToSave
             });
             return sendSuccess(res, newDraft, 'Draft created successfully', 201);
         }
