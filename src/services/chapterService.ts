@@ -668,23 +668,29 @@ class ChapterService {
             throw new Error('Database connection not established');
         }
 
+        // ── PRE-FLIGHT VALIDATION (before any transaction) ──────────────────
+        const chapterForValidation = await IndividualChapter.findByPk(chapterId);
+        if (!chapterForValidation) {
+            throw new Error('Chapter not found');
+        }
+
+        if (chapterForValidation.revisionCount >= 3) {
+            throw new Error('Maximum revision limit (3) reached for this chapter');
+        }
+        if (!chapterForValidation.canRequestRevision()) {
+            throw new Error(`Cannot request revision: chapter is in status '${chapterForValidation.status}'. Must be in review or revision state.`);
+        }
+        if (chapterForValidation.status === ChapterStatus.REVISION_REQUESTED || chapterForValidation.status === ChapterStatus.ADDITIONAL_REVISION_REQUESTED) {
+            throw new Error('revision was already raised please wait for the author response');
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         const transaction = await sequelize.transaction();
 
         try {
             const chapter = await IndividualChapter.findByPk(chapterId, { transaction });
             if (!chapter) {
                 throw new Error('Chapter not found');
-            }
-
-            if (chapter.revisionCount >= 3) {
-                throw new Error('Maximum revision limit (3) reached for this chapter');
-            }
-            if (!chapter.canRequestRevision()) {
-                throw new Error(`Cannot request revision: chapter is in status '${chapter.status}'. Must be in review or revision state.`);
-            }
-
-            if (chapter.status === ChapterStatus.REVISION_REQUESTED || chapter.status === ChapterStatus.ADDITIONAL_REVISION_REQUESTED) {
-                throw new Error('revision was already raised please wait for the author response');
             }
 
             // Capture previous status BEFORE mutating chapter.status
@@ -779,10 +785,13 @@ class ChapterService {
                 }
             }
 
-
             return revision;
         } catch (error) {
-            await transaction.rollback();
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                // Silently ignore or log if rollback fails (e.g. already finished)
+            }
             throw error;
         }
     }
