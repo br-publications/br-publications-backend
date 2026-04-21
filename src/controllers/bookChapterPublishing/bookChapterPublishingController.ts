@@ -583,6 +583,135 @@ export const uploadTempPdf = async (req: AuthRequest, res: Response) => {
 };
 
 // ============================================================
+// ADMIN: Validate all sibling submissions before bulk-publish
+// ============================================================
+
+/**
+ * Statuses that are allowed to pass through the publish flow.
+ * Any submission NOT in this set will block the whole book.
+ */
+const PUBLISHABLE_STATUSES: BookChapterStatus[] = [
+    BookChapterStatus.APPROVED,
+    BookChapterStatus.ISBN_APPLIED,
+    BookChapterStatus.PUBLICATION_IN_PROGRESS,
+    BookChapterStatus.PUBLISHED,
+];
+
+/**
+ * Shared helper: find every BookChapterSubmission that belongs to the same
+ * book title as the given submission.  Handles both text-title and numeric-ID
+ * (BookTitle FK) storage formats.
+ */
+async function findSiblingSubmissions(submission: BookChapterSubmission): Promise<BookChapterSubmission[]> {
+    const { default: BookTitleModel } = await import('../../models/bookTitle');
+    let textTitle = String(submission.bookTitle);
+
+    // Resolve numeric book-title ID → actual text title
+    const parsedId = parseInt(textTitle);
+    if (!isNaN(parsedId) && textTitle.trim() === parsedId.toString()) {
+        const bt = await BookTitleModel.findByPk(parsedId);
+        if (bt) textTitle = (bt as any).title;
+    }
+
+    // Build OR conditions to match both storage formats
+    const btRecord = await BookTitleModel.findOne({
+        where: Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('title')), textTitle.toLowerCase()),
+    });
+
+    const orConditions: any[] = [
+        Sequelize.where(Sequelize.fn('LOWER', Sequelize.col('bookTitle')), textTitle.toLowerCase()),
+    ];
+    if (btRecord) orConditions.push({ bookTitle: (btRecord as any).id.toString() });
+
+    return BookChapterSubmission.findAll({ where: { [Op.or]: orConditions } });
+}
+
+/**
+ * @route GET /api/book-chapter-publishing/:id/validate-publish
+ * @desc  Pre-check: given ONE submission ID, find all submissions for the same
+ *        book title and report whether every one of them is ready to publish.
+ *        The frontend should call this BEFORE triggering the publish flow.
+ * @access Admin / Editor
+ */
+export const validateBulkPublish = async (req: AuthRequest, res: Response) => {
+    try {
+        const user = req.authenticatedUser;
+        if (!user || (!user.hasRole(UserRole.ADMIN) && !user.hasRole(UserRole.DEVELOPER) && !user.hasRole(UserRole.EDITOR))) {
+            return sendError(res, 'Admin or Editor access required', 403);
+        }
+
+        const submissionId = parseInt(req.params.id);
+        if (isNaN(submissionId)) return sendError(res, 'Invalid submission ID', 400);
+
+        const submission = await BookChapterSubmission.findByPk(submissionId);
+        if (!submission) return sendError(res, 'Submission not found', 404);
+
+        // Resolve the human-readable book title for display
+        const bookTitle = await resolveDisplayBookTitle(submission.bookTitle);
+
+        // Find every submission for this book
+        const allSiblings = await findSiblingSubmissions(submission);
+
+        type SubmissionRow = {
+            id: number;
+            status: BookChapterStatus;
+            canPublish: boolean;
+            reason: string | null;
+            chapterTitles: string[];
+        };
+
+        const rows: SubmissionRow[] = allSiblings.map(s => {
+            const canPublish = PUBLISHABLE_STATUSES.includes(s.status);
+            let reason: string | null = null;
+            if (!canPublish) {
+                const labels: Record<string, string> = {
+                    ABSTRACT_SUBMITTED: 'Abstract only submitted — manuscript not yet received',
+                    MANUSCRIPTS_PENDING: 'Manuscripts pending — chapter files not yet uploaded',
+                    REVIEWER_ASSIGNMENT: 'Awaiting reviewer assignment',
+                    UNDER_REVIEW: 'Currently under reviewer review',
+                    EDITORIAL_REVIEW: 'Currently under editorial review',
+                    REJECTED: 'This submission has been rejected',
+                };
+                reason = labels[s.status] ?? `Status "${s.status}" is not publishable`;
+            }
+            return {
+                id: s.id,
+                status: s.status,
+                canPublish,
+                reason,
+                chapterTitles: s.bookChapterTitles || [],
+            };
+        });
+
+        const blockedRows = rows.filter(r => !r.canPublish);
+        const readyRows   = rows.filter(r =>  r.canPublish);
+        const canProceed  = blockedRows.length === 0;
+
+        let message: string;
+        if (canProceed) {
+            message = `All ${rows.length} submission(s) for "${bookTitle}" are ready to publish.`;
+        } else {
+            const names = blockedRows.map(r => `Sub #${r.id} (${r.status})`).join(', ');
+            message = `${blockedRows.length} of ${rows.length} submission(s) cannot be published yet: ${names}. ` +
+                      `Please ensure every chapter is at least APPROVED before publishing the book.`;
+        }
+
+        return sendSuccess(res, {
+            canProceed,
+            bookTitle,
+            totalSubmissions: rows.length,
+            readyCount: readyRows.length,
+            blockedCount: blockedRows.length,
+            submissions: rows,
+        }, message);
+
+    } catch (error) {
+        console.error('❌ validateBulkPublish error:', error);
+        return sendError(res, 'Failed to validate submissions for publishing', 500);
+    }
+};
+
+// ============================================================
 // ADMIN: Publish a book chapter submission
 // ============================================================
 
@@ -650,7 +779,54 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Submission must be in PUBLICATION_IN_PROGRESS before publishing', 400);
         }
 
+        // --- Early-exit: Sibling submission already cascaded to PUBLISHED ---
+        // When a book has 15 chapters (15 submissions), publishing one cascades PUBLISHED status
+        // to all siblings. When those siblings' own publish requests then arrive, their submission
+        // is already PUBLISHED AND their published record already exists — we can safely return
+        // success immediately without re-running all the expensive work.
+        if (submission.status === BookChapterStatus.PUBLISHED) {
+            const existingRecord = await PublishedBookChapter.findOne({
+                where: { bookChapterSubmissionId: submissionId },
+                transaction,
+            });
+            if (existingRecord) {
+                await transaction.rollback();
+                console.log(`[publishBookChapter] Submission #${submissionId} already fully published (cascaded). Returning success.`);
+                return sendSuccess(res, { submission, publishedChapter: existingRecord }, 'Book chapter already published successfully');
+            }
+        }
 
+        // --- Sibling-readiness gate ---
+        // Before writing anything to the DB, verify that EVERY submission for
+        // this book is in a publishable state. If any sibling is still under
+        // review / pending / rejected, we reject the whole publish attempt now
+        // rather than creating a half-published book.
+        {
+            const siblings = await findSiblingSubmissions(submission);
+            const blocked = siblings.filter(s => !PUBLISHABLE_STATUSES.includes(s.status));
+            if (blocked.length > 0) {
+                const details = blocked.map(s => {
+                    const labels: Record<string, string> = {
+                        ABSTRACT_SUBMITTED:  'abstract only submitted',
+                        MANUSCRIPTS_PENDING: 'manuscripts pending',
+                        REVIEWER_ASSIGNMENT: 'awaiting reviewer assignment',
+                        UNDER_REVIEW:        'under review',
+                        EDITORIAL_REVIEW:    'under editorial review',
+                        REJECTED:            'rejected',
+                    };
+                    return `Sub #${s.id} (${labels[s.status] ?? s.status})`;
+                }).join('; ');
+
+                await transaction.rollback();
+                console.warn(`[publishBookChapter] ⛔ Blocked by unready siblings: ${details}`);
+                return sendError(
+                    res,
+                    `Cannot publish: ${blocked.length} submission(s) for this book are not yet ready — ${details}. ` +
+                    `Please ensure every chapter submission is at least APPROVED before publishing.`,
+                    400
+                );
+            }
+        }
 
         // Extract body fields
         const {
@@ -1065,7 +1241,13 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
         return sendSuccess(res, { submission, publishedChapter }, 'Book chapter published successfully');
 
     } catch (error) {
-        await transaction.rollback();
+        // Safely attempt rollback — the transaction may have already been committed
+        // by a concurrent request for the same book, so we guard against that scenario.
+        try {
+            await transaction.rollback();
+        } catch (rollbackErr: any) {
+            console.warn('⚠️ publishBookChapter: Could not rollback transaction (may have already committed):', rollbackErr?.message);
+        }
         console.error('❌ publishBookChapter error:', error);
         return sendError(res, 'Failed to publish book chapter', 500);
     }
@@ -1558,8 +1740,8 @@ export const downloadPublishedFile = async (req: Request, res: Response) => {
                 fileName = pubFile.fileName;
                 mimeType = pubFile.mimeType;
             }
-        } 
-        
+        }
+
         // 2. If not found or if it's a UUID, check TemporaryUpload table
         if (!buffer) {
             const tempUpload = await TemporaryUpload.findByPk(fileId);

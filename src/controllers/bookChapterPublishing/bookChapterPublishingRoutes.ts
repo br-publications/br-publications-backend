@@ -206,6 +206,18 @@ router.post(
  *       200:
  *         description: Book chapter published successfully
  */
+/** GET /api/book-chapter-publishing/:id/validate-publish
+ *  Pre-check: verify all submissions for the same book are ready to publish.
+ *  Call this BEFORE triggering the publish flow.
+ */
+router.get(
+    '/:id/validate-publish',
+    authenticate,
+    requireVerified,
+    hasRoleLevel(UserRole.EDITOR),
+    controller.validateBulkPublish,
+);
+
 /** POST /api/book-chapter-publishing/:id/publish
  *  Publish a submission (id = bookChapterSubmission.id).
  *  Body contains all wizard data including coverImage (base64) and
