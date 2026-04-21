@@ -728,51 +728,19 @@ class ChapterService {
             await transaction.commit();
 
             // Send notification to author(s) (outside transaction)
-            const submission = await BookChapterSubmission.findByPk(chapter.submissionId);
-            if (submission) {
-                const { sendBookChapterRevisionRequestedEmail } = await import('../utils/emails/bookChapterEmails');
-                const { bookTitle: resolvedBookTitle, chapterTitle: resolvedChapterTitle } = await this.resolveTitles(chapter);
+            // Wrapped in try-catch so notification failures don't report as total request failures
+            try {
+                const submission = await BookChapterSubmission.findByPk(chapter.submissionId);
+                if (submission) {
+                    const { sendBookChapterRevisionRequestedEmail } = await import('../utils/emails/bookChapterEmails');
+                    const { bookTitle: resolvedBookTitle, chapterTitle: resolvedChapterTitle } = await this.resolveTitles(chapter);
 
-                // 1. Notify Submitter
-                const submitter = await User.findByPk(submission.submittedBy);
-                if (submitter) {
-                    // App Notification
-                    notificationService.createNotification({
-                        recipientId: submitter.id,
-                        senderId: requestedBy,
-                        type: NotificationType.WARNING,
-                        category: NotificationCategory.REVIEW,
-                        title: 'Revision Requested',
-                        message: `Revision requested for chapter "${resolvedChapterTitle}" (Revision ${revisionNumber}/3)`,
-                        relatedEntityId: chapterId,
-                        relatedEntityType: 'IndividualChapter',
-                    }).catch(err => console.error('Error sending submitter app notification:', err));
-
-                    // Email
-                    sendBookChapterRevisionRequestedEmail(submitter.email, submitter.fullName, {
-                        bookTitle: resolvedBookTitle,
-                        chapterTitle: resolvedChapterTitle,
-                        revisionNumber,
-                        reviewerComments,
-                    }).catch(console.error);
-                }
-
-                // 2. Notify Corresponding Author (if different from submitter)
-                const correspondingAuthor = submission.getCorrespondingAuthor();
-                if (correspondingAuthor && correspondingAuthor.email !== submitter?.email) {
-                    // Email
-                    sendBookChapterRevisionRequestedEmail(correspondingAuthor.email, `${correspondingAuthor.firstName} ${correspondingAuthor.lastName}`, {
-                        bookTitle: resolvedBookTitle,
-                        chapterTitle: resolvedChapterTitle,
-                        revisionNumber,
-                        reviewerComments,
-                    }).catch(console.error);
-
-                    // Try to find if corresponding author is a registered user for App Notification
-                    const correspondingUser = await User.findOne({ where: { email: correspondingAuthor.email, isActive: true } });
-                    if (correspondingUser) {
+                    // 1. Notify Submitter
+                    const submitter = await User.findByPk(submission.submittedBy);
+                    if (submitter) {
+                        // App Notification
                         notificationService.createNotification({
-                            recipientId: correspondingUser.id,
+                            recipientId: submitter.id,
                             senderId: requestedBy,
                             type: NotificationType.WARNING,
                             category: NotificationCategory.REVIEW,
@@ -780,9 +748,46 @@ class ChapterService {
                             message: `Revision requested for chapter "${resolvedChapterTitle}" (Revision ${revisionNumber}/3)`,
                             relatedEntityId: chapterId,
                             relatedEntityType: 'IndividualChapter',
-                        }).catch(err => console.error('Error sending corresponding author app notification:', err));
+                        }).catch(err => console.error('Error sending submitter app notification:', err));
+
+                        // Email
+                        sendBookChapterRevisionRequestedEmail(submitter.email, submitter.fullName, {
+                            bookTitle: resolvedBookTitle,
+                            chapterTitle: resolvedChapterTitle,
+                            revisionNumber,
+                            reviewerComments,
+                        }).catch(console.error);
+                    }
+
+                    // 2. Notify Corresponding Author (if different from submitter and email exists)
+                    const correspondingAuthor = submission.getCorrespondingAuthor();
+                    if (correspondingAuthor && correspondingAuthor.email && correspondingAuthor.email !== submitter?.email) {
+                        // Email
+                        sendBookChapterRevisionRequestedEmail(correspondingAuthor.email, `${correspondingAuthor.firstName} ${correspondingAuthor.lastName}`, {
+                            bookTitle: resolvedBookTitle,
+                            chapterTitle: resolvedChapterTitle,
+                            revisionNumber,
+                            reviewerComments,
+                        }).catch(console.error);
+
+                        // Try to find if corresponding author is a registered user for App Notification
+                        const correspondingUser = await User.findOne({ where: { email: correspondingAuthor.email, isActive: true } });
+                        if (correspondingUser) {
+                            notificationService.createNotification({
+                                recipientId: correspondingUser.id,
+                                senderId: requestedBy,
+                                type: NotificationType.WARNING,
+                                category: NotificationCategory.REVIEW,
+                                title: 'Revision Requested',
+                                message: `Revision requested for chapter "${resolvedChapterTitle}" (Revision ${revisionNumber}/3)`,
+                                relatedEntityId: chapterId,
+                                relatedEntityType: 'IndividualChapter',
+                            }).catch(err => console.error('Error sending corresponding author app notification:', err));
+                        }
                     }
                 }
+            } catch (notifyError) {
+                console.error('Non-critical error sending revision notifications:', notifyError);
             }
 
             return revision;
