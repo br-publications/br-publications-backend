@@ -72,6 +72,17 @@ class CommunicationTemplate extends Model<CommunicationTemplateAttributes> imple
                 variables: {
                     type: DataTypes.JSON,
                     allowNull: true,
+                    get() {
+                        const rawValue = this.getDataValue('variables');
+                        if (typeof rawValue === 'string') {
+                            try {
+                                return JSON.parse(rawValue);
+                            } catch (e) {
+                                return [];
+                            }
+                        }
+                        return rawValue || [];
+                    }
                 },
                 description: {
                     type: DataTypes.STRING,
