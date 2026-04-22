@@ -2,17 +2,17 @@ import { Op } from 'sequelize';
 import PublishingDraft from '../models/publishingDraft';
 
 /**
- * Deletes publishing drafts that haven't been updated in more than 5 days.
+ * Deletes publishing drafts that haven't been updated in more than 10 days.
  */
 export const cleanupExpiredDrafts = async () => {
     try {
-        const fiveDaysAgo = new Date();
-        fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+        const tenDaysAgo = new Date();
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
         const deletedCount = await PublishingDraft.destroy({
             where: {
                 updatedAt: {
-                    [Op.lt]: fiveDaysAgo
+                    [Op.lt]: tenDaysAgo
                 }
             }
         });

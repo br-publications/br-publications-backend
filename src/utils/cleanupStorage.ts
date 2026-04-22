@@ -26,7 +26,7 @@ export const cleanupStorage = async () => {
 
         // 2. Clean up Disk (uploads/temp AND uploads/published_cache)
         const now = Date.now();
-        const FIVE_DAYS_MS = 5 * 24 * 60 * 60 * 1000;
+        const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
 
         const cleanupRecursive = (dirPath: string): number => {
             let deletedCount = 0;
@@ -44,10 +44,10 @@ export const cleanupStorage = async () => {
                             if (fs.readdirSync(fullPath).length === 0) {
                                 fs.rmdirSync(fullPath);
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     } else if (stats.isFile()) {
                         const age = now - stats.mtime.getTime();
-                        if (age > FIVE_DAYS_MS) {
+                        if (age > TEN_DAYS_MS) {
                             fs.unlinkSync(fullPath);
                             deletedCount++;
                         }
