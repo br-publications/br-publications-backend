@@ -785,8 +785,16 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
         // is already PUBLISHED AND their published record already exists — we can safely return
         // success immediately without re-running all the expensive work.
         if (submission.status === BookChapterStatus.PUBLISHED) {
+            const resolvedIsbnForEarlyExit = (req.body?.isbn || submission.isbn || '').trim();
+            const orConditions: any[] = [{ bookChapterSubmissionId: submissionId }];
+            if (resolvedIsbnForEarlyExit) {
+                // Sibling submissions share the same ISBN, allowing us to find the book
+                // created by the first submission in the batch
+                orConditions.push({ isbn: resolvedIsbnForEarlyExit });
+            }
+
             const existingRecord = await PublishedBookChapter.findOne({
-                where: { bookChapterSubmissionId: submissionId },
+                where: { [Op.or]: orConditions },
                 transaction,
             });
             if (existingRecord) {
@@ -901,7 +909,12 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         // Fetch existing published chapter record (if any) to check for existing TOC data
         let publishedChapter = await PublishedBookChapter.findOne({
-            where: { bookChapterSubmissionId: submissionId },
+            where: {
+                [Op.or]: [
+                    { bookChapterSubmissionId: submissionId },
+                    { isbn: resolvedIsbn.trim() }
+                ]
+            },
             transaction,
         });
 
