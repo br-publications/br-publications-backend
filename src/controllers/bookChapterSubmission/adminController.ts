@@ -12,8 +12,15 @@ import {
 import notificationService from '../../services/notificationService';
 import { NotificationType, NotificationCategory } from '../../models/notification';
 import PublishedBook from '../../models/publishedBook';
+import PublishedBookChapter from '../../models/publishedBookChapter';
 import BookChapterReviewerAssignment, { ReviewerAssignmentStatus } from '../../models/bookChapterReviewerAssignment';
-import IndividualChapter, { ChapterStatus } from '../../models/individualChapter'; // Import if needed for stats
+import IndividualChapter, { ChapterStatus } from '../../models/individualChapter';
+import ChapterReviewerAssignment from '../../models/chapterReviewerAssignment';
+import ChapterRevision from '../../models/chapterRevision';
+import ChapterStatusHistory from '../../models/chapterStatusHistory';
+import ChapterDiscussion from '../../models/chapterDiscussion';
+import BookChapterDiscussion from '../../models/bookChapterDiscussion';
+import BookChapterFile from '../../models/bookChapterFile';
 import DeliveryAddress from '../../models/deliveryAddress';
 import BookChapter from '../../models/bookChapter';
 
@@ -233,31 +240,100 @@ export const deleteSubmission = async (req: AuthRequest, res: Response) => {
             return sendError(res, 'Submission not found', 404);
         }
 
-        // Hard delete related data first (cascading usually handles this, but good to be explicit for files)
-        // Delete files logic... (S3 or local storage cleanup should be triggered here)
+        // 1. Cleanup Discussions attached to the main submission
+        await BookChapterDiscussion.destroy({
+            where: { submissionId },
+            transaction
+        });
 
+        // 2. Cleanup Individual chapters and ALL their children
+        // We find all chapters first to delete their children (which might lack CASCADE)
+        const individualChapters = await IndividualChapter.findAll({
+            where: { submissionId },
+            transaction
+        });
+
+        if (individualChapters.length > 0) {
+            const chapterIds = individualChapters.map(c => c.id);
+
+            // Delete chapter-level discussions
+            await ChapterDiscussion.destroy({
+                where: { chapterId: { [Op.in]: chapterIds } },
+                transaction
+            });
+
+            // Delete chapter-level reviewer assignments
+            await ChapterReviewerAssignment.destroy({
+                where: { chapterId: { [Op.in]: chapterIds } },
+                transaction
+            });
+
+            // Delete chapter-level revisions
+            await ChapterRevision.destroy({
+                where: { chapterId: { [Op.in]: chapterIds } },
+                transaction
+            });
+
+            // Delete chapter-level status history
+            await ChapterStatusHistory.destroy({
+                where: { chapterId: { [Op.in]: chapterIds } },
+                transaction
+            });
+
+            // Finally delete the individual chapter records themselves
+            await IndividualChapter.destroy({
+                where: { id: { [Op.in]: chapterIds } },
+                transaction
+            });
+        }
+
+        // 3. Clear links in Published tables (prevents RESTRICT failure)
+        // Set submissionId to null in PublishedBook and PublishedBookChapter if they refer to this submission
+        await PublishedBook.update(
+            { submissionId: null },
+            { where: { submissionId }, transaction }
+        );
+
+        await PublishedBookChapter.update(
+            { bookChapterSubmissionId: null },
+            { where: { bookChapterSubmissionId: submissionId }, transaction }
+        );
+
+        // 4. Cleanup remaining submission-level data
         // Delete history
         await BookChapterStatusHistory.destroy({
             where: { submissionId },
             transaction
         });
 
-        // Delete reviewer assignments
+        // Delete reviewer assignments (submission level - legacy)
         await BookChapterReviewerAssignment.destroy({
             where: { submissionId },
             transaction
         });
 
-        // Delete submission
+        // Delete files (cascading usually handles but explicit is safer inside transaction)
+        await BookChapterFile.destroy({
+            where: { submissionId },
+            transaction
+        });
+
+        // Delete delivery address
+        await DeliveryAddress.destroy({
+            where: { bookChapterSubmissionId: submissionId },
+            transaction
+        });
+
+        // 5. Finally, Delete the submission itself
         await submission.destroy({ transaction });
 
         await transaction.commit();
 
-        return sendSuccess(res, null, 'Submission deleted permanently');
+        return sendSuccess(res, null, 'Submission and all related data deleted permanently');
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) await transaction.rollback();
         console.error('❌ Admin delete submission error:', error);
-        return sendError(res, 'Failed to delete submission', 500);
+        return sendError(res, 'Failed to delete submission. This could be due to existing links in published records.', 500);
     }
 };
 
