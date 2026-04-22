@@ -916,9 +916,11 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 for (const incoming of bookData.tableContents) {
                     // If the incoming chapter is missing its publishedFileId, try to find it in the existing DB record
                     if (incoming && !incoming.publishedFileId) {
-                        const existingMatch = existingToc.find((ex: any) =>
-                            ex.title?.trim().toLowerCase() === incoming.title?.trim().toLowerCase()
-                        );
+                        const existingMatch = existingToc.find((ex: any) => {
+                            const exTitle = ex.title ? String(ex.title).trim().toLowerCase() : undefined;
+                            const incTitle = incoming.title ? String(incoming.title).trim().toLowerCase() : undefined;
+                            return exTitle && incTitle && exTitle === incTitle;
+                        });
 
                         if (existingMatch && existingMatch.publishedFileId) {
                             console.log(`[TOC-Merge] Restoring publishedFileId (${existingMatch.publishedFileId}) for chapter: "${incoming.title}"`);
@@ -986,16 +988,27 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                     where: { submissionId: { [Op.in]: validSubmissionIds } },
                     transaction
                 });
-                actualChapters.forEach((c: any) => approvedTitlesSet.add(c.chapterTitle.toLowerCase().trim()));
+                actualChapters.forEach((c: any) => {
+                    if (c.chapterTitle) approvedTitlesSet.add(c.chapterTitle.toLowerCase().trim());
+                });
             }
 
             allSubmissionsForBook.forEach((sub: any) => {
-                (sub.bookChapterTitles || []).forEach((t: string) => approvedTitlesSet.add(t.toLowerCase().trim()));
+                let titlesToProcess = sub.bookChapterTitles || [];
+                if (typeof titlesToProcess === 'string') {
+                    try { titlesToProcess = JSON.parse(titlesToProcess); } catch { titlesToProcess = []; }
+                }
+                if (!Array.isArray(titlesToProcess)) {
+                    titlesToProcess = [titlesToProcess];
+                }
+                titlesToProcess.forEach((t: string) => {
+                    if (t && typeof t === 'string') approvedTitlesSet.add(t.toLowerCase().trim());
+                });
             });
 
             const missingTitles: string[] = [];
             for (const tocTitle of tocTitles) {
-                if (!approvedTitlesSet.has(tocTitle.toLowerCase().trim())) {
+                if (tocTitle && !approvedTitlesSet.has(tocTitle.toLowerCase().trim())) {
                     missingTitles.push(tocTitle);
                 }
             }
@@ -1097,13 +1110,20 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             // Link to authors by matching selected names from the TOC
             if (item.authors) {
                 const chapterAuthorNames = item.authors.split(',').map((n: string) => n.trim()).filter(Boolean);
+                const matchedAuthors: any[] = [];
                 for (const name of chapterAuthorNames) {
                     const authorRecord = authorMap.get(name);
-                    if (authorRecord) {
-                        // Use association helper added by Sequelize for M:N relation
-                        // The 'as: authorDetails' in PublishedIndividualChapter.associate
-                        await (individualChapter as any).addAuthorDetail(authorRecord, { transaction });
-                    }
+                    if (authorRecord) matchedAuthors.push(authorRecord);
+                }
+                if (matchedAuthors.length > 0) {
+                    await (individualChapter as any).addAuthorDetails(matchedAuthors, { transaction }).catch(async () => {
+                        // Fallback if singular generated method was used
+                        for (const authorRecord of matchedAuthors) {
+                            await (individualChapter as any).addAuthorDetail(authorRecord, { transaction }).catch((err: any) => {
+                                console.warn(`Failed to add author detail to chapter: ${err.message}`);
+                            });
+                        }
+                    });
                 }
             }
         }
@@ -1249,7 +1269,11 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             console.warn('⚠️ publishBookChapter: Could not rollback transaction (may have already committed):', rollbackErr?.message);
         }
         console.error('❌ publishBookChapter error:', error);
-        return sendError(res, 'Failed to publish book chapter', 500);
+        
+        // Provide safe error extraction
+        const errorDetails = error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
+        
+        return sendError(res, `Failed to publish book chapter. DEBUG DETAILS: ${errorDetails}`, 500);
     }
 };
 
