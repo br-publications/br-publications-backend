@@ -12,6 +12,7 @@ export interface PublishedIndividualChapterAttributes {
     pdfName: string | null;
     publishedFileId: string | null;
     abstract: string | null;
+    doi?: string | null;
     views: number;
     createdAt?: Date;
     updatedAt?: Date;
@@ -31,6 +32,7 @@ class PublishedIndividualChapter extends Model<PublishedIndividualChapterAttribu
     public pdfName!: string | null;
     public publishedFileId!: string | null;
     public abstract!: string | null;
+    public doi!: string | null;
     public views!: number;
 
     public readonly createdAt!: Date;
@@ -97,6 +99,10 @@ class PublishedIndividualChapter extends Model<PublishedIndividualChapterAttribu
                 },
                 abstract: {
                     type: DataTypes.TEXT,
+                    allowNull: true,
+                },
+                doi: {
+                    type: DataTypes.STRING(255),
                     allowNull: true,
                 },
                 views: {

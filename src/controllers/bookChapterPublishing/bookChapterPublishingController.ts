@@ -1118,6 +1118,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
                 pdfKey: item.pdfKey || null,
                 pdfName: item.pdfName || null,
                 abstract: item.abstract || null,
+                doi: item.doi || null,
             }, { transaction });
 
             // Link to authors by matching selected names from the TOC
@@ -1482,6 +1483,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
                 pdfKey: item.pdfKey || null,
                 pdfName: item.pdfName || null,
                 abstract: item.abstract || null,
+                doi: item.doi || null,
             }, { transaction });
 
             // Link to authors
@@ -2020,6 +2022,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
                     pdfKey: item.pdfKey || null,
                     pdfName: item.pdfName || null,
                     abstract: item.abstract || null,
+                    doi: item.doi || null,
                 }, { transaction });
 
                 // Link to authors if they exist in relational table
