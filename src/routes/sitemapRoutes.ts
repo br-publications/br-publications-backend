@@ -172,7 +172,7 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
  * Tells search engine crawlers what to index and where the sitemap is
  */
 router.get('/robots.txt', (req: Request, res: Response) => {
-  const baseUrl = process.env.FRONTEND_URL || 'https://www.brpublications.com';
+  const backendUrl = process.env.BACKEND_URL || 'https://api.brpublications.com';
 
   const robots = `User-agent: *
 Allow: /
@@ -181,8 +181,8 @@ Disallow: /api/
 Disallow: /user/register
 Disallow: /user/login
 
-# Sitemap
-Sitemap: ${baseUrl}/sitemap.xml
+# Sitemap — served from backend API (returns valid XML)
+Sitemap: ${backendUrl}/sitemap.xml
 `;
 
   res.header('Content-Type', 'text/plain');
