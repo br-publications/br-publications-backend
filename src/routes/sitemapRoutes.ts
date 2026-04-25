@@ -27,9 +27,12 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     // Import models dynamically (they're loaded by the time routes are called)
     const { default: PublishedBook } = await import('../models/publishedBook');
     const { default: PublishedBookChapter } = await import('../models/publishedBookChapter');
+    const { default: PublishedAuthor } = await import('../models/publishedAuthor');
+    const { default: PublishedEditor } = await import('../models/publishedEditor');
+    const { default: PublishedIndividualChapter } = await import('../models/publishedIndividualChapter');
 
-    // Fetch all published books and chapters
-    const [books, chapters] = await Promise.all([
+    // Fetch all published books, chapters, individual chapters, authors, and editors
+    const [books, chapters, individualChapters, authors, editors] = await Promise.all([
       PublishedBook.findAll({
         attributes: ['id', 'title', 'updatedAt'],
         where: { isHidden: false },
@@ -39,7 +42,19 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
         attributes: ['id', 'title', 'updatedAt'],
         where: { isHidden: false },
         order: [['id', 'ASC']],
-      }).catch(() => []) // graceful fallback if table differs
+      }).catch(() => []),
+      PublishedIndividualChapter.findAll({
+        attributes: ['id', 'publishedBookChapterId', 'chapterNumber', 'title', 'updatedAt'],
+        order: [['id', 'ASC']],
+      }).catch(() => []),
+      PublishedAuthor.findAll({
+        attributes: ['id', 'name', 'updatedAt'],
+        order: [['id', 'ASC']],
+      }).catch(() => []),
+      PublishedEditor.findAll({
+        attributes: ['id', 'name', 'updatedAt'],
+        order: [['id', 'ASC']],
+      }).catch(() => []),
     ]);
 
     // Static pages
@@ -92,6 +107,48 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     <loc>${baseUrl}/bookchapter/${chapter.id}/${slug}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <lastmod>${lastmod}</lastmod>
+  </url>`);
+    });
+    // Add individual chapter pages (/book/:bookId/chapter/:chapterNumber)
+    individualChapters.forEach((ic: any) => {
+      if (!ic.publishedBookChapterId || !ic.chapterNumber) return;
+      const lastmod = ic.updatedAt
+        ? new Date(ic.updatedAt).toISOString().split('T')[0]
+        : today;
+      urlEntries.push(`
+  <url>
+    <loc>${baseUrl}/book/${ic.publishedBookChapterId}/chapter/${ic.chapterNumber}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.75</priority>
+    <lastmod>${lastmod}</lastmod>
+  </url>`);
+    });
+
+    // Add author profile pages
+    authors.forEach((author: any) => {
+      const lastmod = author.updatedAt
+        ? new Date(author.updatedAt).toISOString().split('T')[0]
+        : today;
+      urlEntries.push(`
+  <url>
+    <loc>${baseUrl}/author/${author.id}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>${lastmod}</lastmod>
+  </url>`);
+    });
+
+    // Add editor profile pages
+    editors.forEach((editor: any) => {
+      const lastmod = editor.updatedAt
+        ? new Date(editor.updatedAt).toISOString().split('T')[0]
+        : today;
+      urlEntries.push(`
+  <url>
+    <loc>${baseUrl}/editor/${editor.id}</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
     <lastmod>${lastmod}</lastmod>
   </url>`);
     });
