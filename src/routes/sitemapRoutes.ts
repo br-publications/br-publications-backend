@@ -185,6 +185,10 @@ Allow: /api/books/
 Allow: /api/contact/
 # Block sensitive APIs if necessary
 # Disallow: /api/admin/
+
+User-agent: bingbot
+Crawl-delay: 10
+
 Sitemap: ${backendUrl}/sitemap.xml
 `;
 
