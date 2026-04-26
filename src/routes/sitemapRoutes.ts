@@ -172,7 +172,7 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
  * Tells search engine crawlers what to index and where the sitemap is
  */
 router.get('/robots.txt', (req: Request, res: Response) => {
-  const backendUrl = process.env.BACKEND_URL || 'https://api.brpublications.com';
+  const frontendUrl = process.env.FRONTEND_URL || 'https://www.brpublications.com';
 
   const robots = `User-agent: *
 Allow: /
@@ -189,7 +189,7 @@ Allow: /api/contact/
 User-agent: bingbot
 Crawl-delay: 10
 
-Sitemap: ${backendUrl}/sitemap.xml
+Sitemap: ${frontendUrl}/sitemap.xml
 `;
 
   res.header('Content-Type', 'text/plain');
