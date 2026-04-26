@@ -177,11 +177,14 @@ router.get('/robots.txt', (req: Request, res: Response) => {
   const robots = `User-agent: *
 Allow: /
 Disallow: /dashboard/
-Disallow: /api/
 Disallow: /user/register
 Disallow: /user/login
-
-# Sitemap — served from backend API (returns valid XML)
+# Allow Googlebot to read the public APIs needed for rendering the website
+Allow: /api/book-chapter-publishing/
+Allow: /api/books/
+Allow: /api/contact/
+# Block sensitive APIs if necessary
+# Disallow: /api/admin/
 Sitemap: ${backendUrl}/sitemap.xml
 `;
 
