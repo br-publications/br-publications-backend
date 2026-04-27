@@ -16,6 +16,23 @@ const toSlug = (text: string): string => {
 };
 
 /**
+ * Generates a unique 6-digit slug in the format uid=XXXXXX
+ * based on the book's ISBN and Release Date.
+ */
+const generateUniqueSlug = (isbn: string, releaseDate?: string): string => {
+  const combined = `${isbn}${releaseDate || ''}`;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  const positiveHash = Math.abs(hash);
+  const sixDigit = (positiveHash % 1000000).toString().padStart(6, '0');
+  return `uid=${sixDigit}`;
+};
+
+/**
  * GET /sitemap.xml
  * Dynamically generates a sitemap listing all published books and book chapters
  */
@@ -34,12 +51,12 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     // Fetch all published books, chapters, individual chapters, authors, and editors
     const [books, chapters, individualChapters, authors, editors] = await Promise.all([
       PublishedBook.findAll({
-        attributes: ['id', 'title', 'updatedAt'],
+        attributes: ['id', 'title', 'isbn', 'releaseDate', 'updatedAt'],
         where: { isHidden: false },
         order: [['id', 'ASC']],
       }),
       PublishedBookChapter.findAll({
-        attributes: ['id', 'title', 'updatedAt'],
+        attributes: ['id', 'title', 'isbn', 'releaseDate', 'updatedAt'],
         where: { isHidden: false },
         order: [['id', 'ASC']],
       }).catch(() => []),
@@ -83,7 +100,7 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
     // Add books
     books.forEach((book: any) => {
-      const slug = toSlug(book.title || '');
+      const slug = generateUniqueSlug(book.isbn || '', book.releaseDate || '');
       const lastmod = book.updatedAt
         ? new Date(book.updatedAt).toISOString().split('T')[0]
         : today;
@@ -98,7 +115,7 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
     // Add book chapters
     chapters.forEach((chapter: any) => {
-      const slug = toSlug(chapter.title || '');
+      const slug = generateUniqueSlug(chapter.isbn || '', chapter.releaseDate || '');
       const lastmod = chapter.updatedAt
         ? new Date(chapter.updatedAt).toISOString().split('T')[0]
         : today;
