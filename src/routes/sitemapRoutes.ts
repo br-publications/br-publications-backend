@@ -51,7 +51,7 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
     // Fetch all published books, chapters, individual chapters, authors, and editors
     const [books, chapters, individualChapters, authors, editors] = await Promise.all([
       PublishedBook.findAll({
-        attributes: ['id', 'title', 'isbn', 'releaseDate', 'updatedAt'],
+        attributes: ['id', 'updatedAt'],
         where: { isHidden: false },
         order: [['id', 'ASC']],
       }),
@@ -100,13 +100,12 @@ router.get('/sitemap.xml', async (req: Request, res: Response) => {
 
     // Add books
     books.forEach((book: any) => {
-      const slug = generateUniqueSlug(book.isbn || '', book.releaseDate || '');
       const lastmod = book.updatedAt
         ? new Date(book.updatedAt).toISOString().split('T')[0]
         : today;
       urlEntries.push(`
   <url>
-    <loc>${baseUrl}/book/${book.id}/${slug}</loc>
+    <loc>${baseUrl}/book/${book.id}</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <lastmod>${lastmod}</lastmod>
