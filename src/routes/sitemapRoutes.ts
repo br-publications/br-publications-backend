@@ -16,6 +16,22 @@ const toSlug = (text: string): string => {
 };
 
 /**
+ * Escapes special XML characters
+ */
+const escapeXml = (unsafe: string): string => {
+  return unsafe.replace(/[<>&'"]/g, (c) => {
+    switch (c) {
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '&': return '&amp;';
+      case '\'': return '&apos;';
+      case '"': return '&quot;';
+      default: return c;
+    }
+  });
+};
+
+/**
  * Generates a unique 6-digit slug in the format uid=XXXXXX
  * based on the book's ISBN and Release Date.
  */
@@ -211,6 +227,114 @@ Sitemap: ${frontendUrl}/sitemap.xml
   res.header('Content-Type', 'text/plain');
   res.header('Cache-Control', 'public, max-age=86400'); // Cache 24h
   res.send(robots);
+});
+
+/**
+ * GET /onix-feed.xml
+ * Generates an ONIX 3.0 feed for Google Books Partner Center
+ */
+router.get('/onix-feed.xml', async (req: Request, res: Response) => {
+  try {
+    const { default: PublishedBook } = await import('../models/publishedBook');
+    const { default: PublishedBookChapter } = await import('../models/publishedBookChapter');
+
+    // Fetch all public books from both tables
+    const [books, chapters] = await Promise.all([
+      PublishedBook.findAll({ where: { isHidden: false } }),
+      PublishedBookChapter.findAll({ where: { isHidden: false } }),
+    ]);
+
+    const allItems = [
+      ...books.map((b: any) => ({
+        id: `BOOK-${b.id}`,
+        title: b.title,
+        isbn: b.isbn.replace(/-/g, ''),
+        author: b.author,
+        description: b.description || b.title,
+        publishedYear: b.publishedDate || new Date(b.createdAt).getFullYear().toString(),
+        publisher: 'BR Publications'
+      })),
+      ...chapters.map((c: any) => ({
+        id: `RESNOVA-${c.id}`,
+        title: c.title,
+        isbn: c.isbn.replace(/-/g, ''),
+        author: Array.isArray(c.editors) && c.editors.length > 0 ? c.editors[0] : (c.author || 'BR Publications'),
+        description: c.description || c.title,
+        publishedYear: c.publishedDate || new Date(c.createdAt).getFullYear().toString(),
+        publisher: 'BR ResNova Academic Press'
+      }))
+    ];
+
+    const bookXML = allItems.map(item => `
+    <Product>
+      <RecordReference>${item.id}</RecordReference>
+      <NotificationType>03</NotificationType>
+      
+      <ProductIdentifier>
+        <ProductIDType>15</ProductIDType>
+        <IDValue>${item.isbn}</IDValue>
+      </ProductIdentifier>
+      
+      <DescriptiveDetail>
+        <TitleDetail>
+          <TitleType>01</TitleType>
+          <TitleElement>
+            <TitleElementLevel>01</TitleElementLevel>
+            <TitleText>${escapeXml(item.title)}</TitleText>
+          </TitleElement>
+        </TitleDetail>
+        
+        <Contributor>
+          <ContributorRole>A01</ContributorRole>
+          <PersonName>${escapeXml(item.author)}</PersonName>
+        </Contributor>
+        
+        <Language>
+          <LanguageRole>01</LanguageRole>
+          <LanguageCode>eng</LanguageCode>
+        </Language>
+      </DescriptiveDetail>
+      
+      <PublishingDetail>
+        <Publisher>
+          <PublishingRole>01</PublishingRole>
+          <PublisherName>${escapeXml(item.publisher)}</PublisherName>
+        </Publisher>
+        <PublicationDate>
+          <PublicationDateRole>01</PublicationDateRole>
+          <Date>${item.publishedYear}</Date>
+        </PublicationDate>
+      </PublishingDetail>
+      
+      <CollateralDetail>
+        <TextContent>
+          <TextType>03</TextType>
+          <ContentAudience>00</ContentAudience>
+          <Text>${escapeXml(item.description)}</Text>
+        </TextContent>
+      </CollateralDetail>
+    </Product>`).join('');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<ONIXMessage release="3.0" xmlns="http://ns.editeur.org/onix/3.0/reference">
+  <Header>
+    <Sender>
+      <SenderName>BR Publications</SenderName>
+      <ContactName>API Support</ContactName>
+      <EmailAddress>support@brpublications.com</EmailAddress>
+    </Sender>
+    <SentDateTime>${new Date().toISOString().replace(/[-:]/g, '').split('.')[0]}</SentDateTime>
+  </Header>
+  ${bookXML}
+</ONIXMessage>`;
+
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+
+  } catch (error) {
+    console.error('ONIX feed generation error:', error);
+    res.status(500).send('Error generating ONIX feed');
+  }
 });
 
 export default router;
