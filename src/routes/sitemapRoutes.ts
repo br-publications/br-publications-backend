@@ -252,7 +252,8 @@ router.get('/onix-feed.xml', async (req: Request, res: Response) => {
         author: b.author,
         description: b.description || b.title,
         publishedYear: b.publishedDate || new Date(b.createdAt).getFullYear().toString(),
-        publisher: 'BR Publications'
+        publisher: 'BR Publications',
+        coverUrl: `https://api.brpublications.com/api/books/${b.id}/cover`
       })),
       ...chapters.map((c: any) => ({
         id: `RESNOVA-${c.id}`,
@@ -261,7 +262,8 @@ router.get('/onix-feed.xml', async (req: Request, res: Response) => {
         author: Array.isArray(c.editors) && c.editors.length > 0 ? c.editors[0] : (c.author || 'BR Publications'),
         description: c.description || c.title,
         publishedYear: c.publishedDate || new Date(c.createdAt).getFullYear().toString(),
-        publisher: 'BR ResNova Academic Press'
+        publisher: 'BR ResNova Academic Press',
+        coverUrl: `https://api.brpublications.com/api/book-chapter-publishing/${c.id}/cover`
       }))
     ];
 
@@ -312,6 +314,15 @@ router.get('/onix-feed.xml', async (req: Request, res: Response) => {
           <ContentAudience>00</ContentAudience>
           <Text>${escapeXml(item.description)}</Text>
         </TextContent>
+        <SupportingResource>
+          <ResourceContentType>01</ResourceContentType>
+          <ContentAudience>00</ContentAudience>
+          <ResourceMode>03</ResourceMode>
+          <ResourceVersion>
+            <ResourceForm>02</ResourceForm>
+            <ResourceLink>${item.coverUrl}</ResourceLink>
+          </ResourceVersion>
+        </SupportingResource>
       </CollateralDetail>
     </Product>`).join('');
 
