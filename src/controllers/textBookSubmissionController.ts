@@ -1620,8 +1620,6 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
         // Reuse authorName from above
 
 
-        console.log(`[Publish-TextBook] Notification phase for book "${submission.bookTitle}", author email: ${authorEmail || 'MISSING'}`);
-
         if (!authorEmail || authorEmail.trim() === '' || authorEmail.toLowerCase() === 'n/a' || authorEmail.toLowerCase() === 'undefined') {
             console.warn(`[Publish-TextBook] Skipping author notifications for submission ${submission.id} due to missing or invalid email.`);
         } else {

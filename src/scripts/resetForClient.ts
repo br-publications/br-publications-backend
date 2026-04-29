@@ -147,7 +147,6 @@ async function reset() {
     const emailList = EMAILS_TO_KEEP.map(e => `'${e.replace(/'/g, "\\'")}'`).join(', ');
 
     await sql(`DELETE FROM \`users\` WHERE \`email\` NOT IN (${emailList});`);
-    console.log(`\n  ✅ Users cleared (kept: ${EMAILS_TO_KEEP.join(', ')})`);
 
     // ── 5. Re-enable FK checks ───────────────────────────────
     await sql(`SET FOREIGN_KEY_CHECKS = 1;`);
@@ -157,10 +156,8 @@ async function reset() {
         `SELECT id, email FROM \`users\` ORDER BY id`,
         { type: QueryTypes.SELECT }
     );
-    console.log('\n📋 Remaining users in DB:');
     const keptArr = Array.isArray(kept) ? kept : [kept];
     keptArr.forEach((u: any) => {
-        console.log(`   #${u.id} — ${u.email}`);
     });
 
     console.log('\n✅ DB reset complete! Migrations are intact. Ready for client handoff.\n');

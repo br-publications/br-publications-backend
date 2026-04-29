@@ -26,7 +26,6 @@ async function addColumn() {
         const tableDescription = await queryInterface.describeTable('text_book_submissions');
 
         if (!tableDescription.isBulkSubmission) {
-            console.log('Adding isBulkSubmission column...');
             await queryInterface.addColumn('text_book_submissions', 'isBulkSubmission', {
                 type: DataTypes.BOOLEAN,
                 allowNull: false,

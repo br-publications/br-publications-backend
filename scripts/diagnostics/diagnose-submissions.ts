@@ -31,13 +31,10 @@ async function diagnose() {
         User.initialize(sequelize);
         BookChapterSubmission.initialize(sequelize);
 
-        console.log('\n--- USERS (Editors/Admins/Authors) ---');
         const users = await User.findAll({
             attributes: ['id', 'email', 'role', 'username', 'fullName']
         });
-        console.table(users.map(u => ({ id: u.id, email: u.email, role: u.role, name: u.fullName })));
 
-        console.log('\n--- SUBMISSIONS ---');
         const submissions = await BookChapterSubmission.findAll();
 
         if (submissions.length === 0) {
@@ -52,16 +49,12 @@ async function diagnose() {
             })));
         }
 
-        console.log('\n--- DIAGNOSIS ---');
         const editors = users.filter(u => u.role === 'editor');
 
         editors.forEach(editor => {
             const assignedCount = submissions.filter(s => s.assignedEditorId === editor.id).length;
-            console.log(`Editor ${editor.email} (ID: ${editor.id}) has ${assignedCount} submissions assigned.`);
-
             if (assignedCount > 0) {
                 const statuses = submissions.filter(s => s.assignedEditorId === editor.id).map(s => s.status);
-                console.log(`   Statuses: ${statuses.join(', ')}`);
             }
         });
 

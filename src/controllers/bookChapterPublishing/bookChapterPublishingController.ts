@@ -79,14 +79,12 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
 
         // Skip items already in permanent storage IF they don't have new data
         if (item.publishedFileId && !hasNewData) {
-            console.log(`[PDF-Storage] TOC Chapter "${item.title}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
             continue;
         }
 
         // Option 1: Process from pdfKey (TemporaryUpload)
         if (item.pdfKey) {
             try {
-                console.log(`[PDF-Storage] Moving TOC chapter "${item.title}" from temp to permanent storage...`);
                 const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
                 if (tempUpload) {
                     let pubFile;
@@ -131,7 +129,6 @@ const processTempPdfsForTableContents = async (toc: any, transaction?: any) => {
         // Option 2: Process from direct base64 pdfData
         else if (item.pdfData && typeof item.pdfData === 'string' && item.pdfData.startsWith('data:application/pdf;base64,')) {
             try {
-                console.log(`[PDF-Storage] Processing base64 TOC chapter "${item.title}"...`);
                 const base64Data = item.pdfData.replace(/^data:application\/pdf;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
                 const fileName = item.pdfName || `${item.title.substring(0, 20)}.pdf`;
@@ -184,14 +181,12 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
 
         // Skip items already in permanent storage IF they don't have new data
         if (item.publishedFileId && !hasNewData) {
-            console.log(`[PDF-Storage] Frontmatter "${key}" already in permanent storage (ID: ${item.publishedFileId}), skipping.`);
             continue;
         }
 
         // Option 1: Process from pdfKey (TemporaryUpload)
         if (item.pdfKey) {
             try {
-                console.log(`[PDF-Storage] Moving Frontmatter "${key}" from temp to permanent storage...`);
                 const tempUpload = await TemporaryUpload.findByPk(item.pdfKey);
                 if (tempUpload) {
                     let pubFile;
@@ -235,7 +230,6 @@ const processTempPdfsForFrontmatter = async (frontmatter: any, transaction?: any
         // Option 2: Process from direct base64 data
         else if (item.data && typeof item.data === 'string' && item.data.startsWith('data:application/pdf;base64,')) {
             try {
-                console.log(`[PDF-Storage] Processing base64 Frontmatter "${key}"...`);
                 const base64Data = item.data.replace(/^data:application\/pdf;base64,/, '');
                 const buffer = Buffer.from(base64Data, 'base64');
                 const fileName = item.name || `${key.substring(0, 20)}.pdf`;
@@ -684,8 +678,8 @@ export const validateBulkPublish = async (req: AuthRequest, res: Response) => {
         });
 
         const blockedRows = rows.filter(r => !r.canPublish);
-        const readyRows   = rows.filter(r =>  r.canPublish);
-        const canProceed  = blockedRows.length === 0;
+        const readyRows = rows.filter(r => r.canPublish);
+        const canProceed = blockedRows.length === 0;
 
         let message: string;
         if (canProceed) {
@@ -693,7 +687,7 @@ export const validateBulkPublish = async (req: AuthRequest, res: Response) => {
         } else {
             const names = blockedRows.map(r => `Sub #${r.id} (${r.status})`).join(', ');
             message = `${blockedRows.length} of ${rows.length} submission(s) cannot be published yet: ${names}. ` +
-                      `Please ensure every chapter is at least APPROVED before publishing the book.`;
+                `Please ensure every chapter is at least APPROVED before publishing the book.`;
         }
 
         return sendSuccess(res, {
@@ -815,12 +809,12 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             if (blocked.length > 0) {
                 const details = blocked.map(s => {
                     const labels: Record<string, string> = {
-                        ABSTRACT_SUBMITTED:  'abstract only submitted',
+                        ABSTRACT_SUBMITTED: 'abstract only submitted',
                         MANUSCRIPTS_PENDING: 'manuscripts pending',
                         REVIEWER_ASSIGNMENT: 'awaiting reviewer assignment',
-                        UNDER_REVIEW:        'under review',
-                        EDITORIAL_REVIEW:    'under editorial review',
-                        REJECTED:            'rejected',
+                        UNDER_REVIEW: 'under review',
+                        EDITORIAL_REVIEW: 'under editorial review',
+                        REJECTED: 'rejected',
                     };
                     return `Sub #${s.id} (${labels[s.status] ?? s.status})`;
                 }).join('; ');
@@ -1283,10 +1277,10 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             console.warn('⚠️ publishBookChapter: Could not rollback transaction (may have already committed):', rollbackErr?.message);
         }
         console.error('❌ publishBookChapter error:', error);
-        
+
         // Provide safe error extraction
         const errorDetails = error instanceof Error ? `${error.message}\n${error.stack}` : String(error);
-        
+
         return sendError(res, `Failed to publish book chapter. DEBUG DETAILS: ${errorDetails}`, 500);
     }
 };

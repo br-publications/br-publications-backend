@@ -148,7 +148,6 @@ const sendEmailViaSendGrid = async (
     };
 
     const [response] = await sgMail.send(message);
-    console.log(`✅ SendGrid email sent successfully to ${to}. StatusCode: ${response.statusCode}`);
 };
 
 const sendEmailViaResend = async (
@@ -185,7 +184,6 @@ const sendEmailViaResend = async (
         throw new Error(`Resend Error: ${error.message}`);
     }
 
-    console.log(`✅ Resend email sent successfully to ${to}. MessageId: ${data?.id}`);
 };
 
 /**
@@ -219,7 +217,6 @@ export const sendEmail = async (
             html,
             text: text || html.replace(/<[^>]*>/g, ''),
         }).then(info => {
-            console.log(`✅ Email sent successfully to ${to}. MessageId: ${info.messageId}`);
         }).catch(error => {
             console.error(`❌ Error sending email to ${to}:`, error);
             if (waitForResponse) throw error;
