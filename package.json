@@ -40,7 +40,7 @@
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "mysql2": "^3.22.0",
+    "mysql2": "^3.22.3",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
     "react-hot-toast": "^2.6.0",
@@ -49,7 +49,8 @@
     "sequelize-cli": "^6.6.2",
     "sharp": "^0.34.5",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.1"
+    "swagger-ui-express": "^5.0.1",
+    "pdfkit": "^0.15.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -63,6 +64,7 @@
     "@types/sequelize": "^4.28.20",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "@types/pdfkit": "^0.13.8",
     "cross-env": "^10.1.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.9.3"

@@ -55,6 +55,7 @@ export interface PublishedBookChapterAttributes {
     releaseDate: string | null;
     copyright: string | null;
     doi: string | null;
+    uid: string | null;
 
     // Cover image stored as base64 data URL
     coverImage: string | null;
@@ -109,6 +110,7 @@ class PublishedBookChapter
     public releaseDate!: string | null;
     public copyright!: string | null;
     public doi!: string | null;
+    public uid!: string | null;
     public coverImage!: string | null;
     public synopsis!: Record<string, string> | null;
     public scope!: Record<string, string> | null;
@@ -214,6 +216,10 @@ class PublishedBookChapter
                 },
                 doi: {
                     type: DataTypes.STRING(200),
+                    allowNull: true,
+                },
+                uid: {
+                    type: DataTypes.STRING(100),
                     allowNull: true,
                 },
                 coverImage: {

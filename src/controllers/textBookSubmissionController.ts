@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { Op, Sequelize } from 'sequelize';
 import TextBookSubmission, { TextBookStatus } from '../models/textBookSubmission';
 import PublishedBook, { BookType } from '../models/publishedBook';
+import { generateBookDescriptionPdf } from '../utils/pdfGenerator';
 import TextBookFile, { TextBookFileType } from '../models/textBookFile';
 import TextBookRevision from '../models/textBookRevision';
 import TextBookStatusHistory from '../models/textBookStatusHistory';
@@ -1575,7 +1576,7 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
                 .join(', ');
         }
 
-        await PublishedBook.create({
+        const publishedBook = await PublishedBook.create({
             submissionId: null, // This is for chapters
             textBookSubmissionId: submission.id,
             bookType: BookType.TEXTBOOK,
@@ -1598,10 +1599,33 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
             amazonLink: publicationDetails.amazonLink || null,
             isHidden: false,
             isFeatured: false,
-            // Map other fields from publicationDetails if they exist
-            // e.g. keywords -> generic mapping?
-            // For now this covers the main requirements
+            keywords: publicationDetails.keywords || null,
+            uid: publicationDetails.uid || null,
+            descriptionPdf: null,
         }, { transaction });
+
+        // If UID is missing, fall back to the generated ID
+        if (!publishedBook.uid) {
+            publishedBook.uid = String(publishedBook.id);
+        }
+
+        // Generate dynamic description PDF
+        try {
+            const pdfBuffer = await generateBookDescriptionPdf({
+                title: publishedBook.title,
+                author: publishedBook.author,
+                isbn: publishedBook.isbn,
+                publisher: publicationDetails.publisher || 'BR Publications',
+                releaseDate: publishedBook.releaseDate,
+                edition: publicationDetails.edition || '1st Edition',
+                description: publishedBook.description,
+                coverImage: publishedBook.coverImage,
+            });
+            publishedBook.descriptionPdf = pdfBuffer;
+            await publishedBook.save({ transaction });
+        } catch (pdfError) {
+            console.error('[publishTextBook] Failed to generate dynamic description PDF:', pdfError);
+        }
 
         // Create status history
         await createStatusHistory(

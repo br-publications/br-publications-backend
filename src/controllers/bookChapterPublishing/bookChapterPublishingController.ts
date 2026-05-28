@@ -855,7 +855,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             googleLink,
             flipkartLink,
             amazonLink,
-            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor
+            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor, uid
         } = req.body;
 
         // Validate required fields — fall back to the ISBN already recorded on the submission
@@ -899,6 +899,7 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
             primaryEditor: primaryEditor || null,
             isHidden: false,
             isFeatured: false,
+            uid: uid || null,
         };
 
         // Fetch existing published chapter record (if any) to check for existing TOC data
@@ -1030,9 +1031,15 @@ export const publishBookChapter = async (req: AuthRequest, res: Response) => {
 
         // Create or update the published_book_chapters record
         if (publishedChapter) {
-            await publishedChapter.update(bookData, { transaction });
+            await publishedChapter.update({
+                ...bookData,
+                uid: bookData.uid || publishedChapter.uid || String(publishedChapter.id)
+            }, { transaction });
         } else {
             publishedChapter = await PublishedBookChapter.create(bookData, { transaction });
+            if (!publishedChapter.uid) {
+                await publishedChapter.update({ uid: String(publishedChapter.id) }, { transaction });
+            }
         }
 
         // --- Populate Relational Tables (Normalized Data) ---
@@ -1337,7 +1344,7 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             googleLink,
             flipkartLink,
             amazonLink,
-            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor
+            frontmatterPdfs, mainAuthor, coAuthorsData, keywords, editors, primaryEditor, uid
         } = req.body;
 
         if (!title || !isbn) {
@@ -1390,9 +1397,15 @@ export const publishDirectBookChapter = async (req: AuthRequest, res: Response) 
             frontmatterPdfs: await processTempPdfsForFrontmatter(parseJsonField(frontmatterPdfs), transaction),
             isHidden: false,
             isFeatured: false,
+            uid: uid || null,
         };
 
         const publishedChapter = await PublishedBookChapter.create(bookData, { transaction });
+
+        // If UID is missing, fall back to the generated ID
+        if (!publishedChapter.uid) {
+            await publishedChapter.update({ uid: String(publishedChapter.id) }, { transaction });
+        }
 
         // --- Populate Relational Tables (Normalized Data) ---
         const authorMap = new Map<string, any>();
@@ -1936,7 +1949,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             copyright, indexedIn, pricing, synopsis, scope,
             tableContents, authorBiographies, editorBiographies, archives, frontmatterPdfs,
             mainAuthor, coAuthorsData, coverImage,
-            googleLink, flipkartLink, amazonLink, keywords
+            googleLink, flipkartLink, amazonLink, keywords, uid
         } = req.body;
 
         const previousDoi = chapter.doi;
@@ -1991,6 +2004,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             ...(flipkartLink !== undefined && { flipkartLink }),
             ...(amazonLink !== undefined && { amazonLink }),
             ...(keywords !== undefined && { keywords }),
+            ...(uid !== undefined && { uid }),
             ...(parsedEditorBiographies && { editorBiographies: parsedEditorBiographies }),
         }, { transaction });
 

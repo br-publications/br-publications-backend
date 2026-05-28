@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Op } from 'sequelize';
 import PublishedBook from '../models/publishedBook';
+import { generateBookDescriptionPdf } from '../utils/pdfGenerator';
 import TextBookFile from '../models/textBookFile';
 import { sendSuccess, sendError } from '../utils/responseHandler';
 import sharp from 'sharp';
@@ -10,7 +11,7 @@ import sharp from 'sharp';
  */
 const ensureParsedJson = (book: any) => {
     if (!book) return book;
-    const jsonFields = ['pricing', 'scope', 'tableContents', 'authorBiographies', 'archives'];
+    const jsonFields = ['pricing', 'scope', 'tableContents', 'authorBiographies', 'archives', 'keywords'];
     const data = book.toJSON ? book.toJSON() : book;
     
     jsonFields.forEach(field => {
@@ -435,7 +436,8 @@ export const updateBookDetails = async (req: Request, res: Response) => {
         const {
             title, author, description, category, isbn, doi, pages,
             publishedDate, pricing, coAuthors, indexedIn, releaseDate,
-            copyright, googleLink, flipkartLink, amazonLink
+            copyright, googleLink, flipkartLink, amazonLink,
+            keywords, uid, descriptionPdf
         } = req.body;
 
         const updateData: any = {
@@ -453,7 +455,10 @@ export const updateBookDetails = async (req: Request, res: Response) => {
             copyright,
             googleLink,
             flipkartLink,
-            amazonLink
+            amazonLink,
+            keywords,
+            uid,
+            descriptionPdf
         };
 
         // If publishedDate is not explicitly provided, derive it from releaseDate (Year)
@@ -464,6 +469,34 @@ export const updateBookDetails = async (req: Request, res: Response) => {
             }
         } else if (publishedDate) {
             updateData.publishedDate = publishedDate;
+        }
+
+        // Regenerate description PDF if key details are changed
+        const hasKeyDetailsChanged =
+            (title !== undefined && title !== book.title) ||
+            (author !== undefined && author !== book.author) ||
+            (description !== undefined && description !== book.description) ||
+            (isbn !== undefined && isbn !== book.isbn) ||
+            (releaseDate !== undefined && releaseDate !== book.releaseDate) ||
+            (req.body.publisher !== undefined) ||
+            (req.body.edition !== undefined);
+
+        if (hasKeyDetailsChanged) {
+            try {
+                const pdfBuffer = await generateBookDescriptionPdf({
+                    title: title !== undefined ? title : book.title,
+                    author: author !== undefined ? author : book.author,
+                    isbn: isbn !== undefined ? isbn : book.isbn,
+                    publisher: req.body.publisher || 'BR Publications',
+                    releaseDate: releaseDate !== undefined ? releaseDate : book.releaseDate,
+                    edition: req.body.edition || '1st Edition',
+                    description: description !== undefined ? description : book.description,
+                    coverImage: book.coverImage,
+                });
+                updateData.descriptionPdf = pdfBuffer;
+            } catch (pdfError) {
+                console.error('[updateBookDetails] Failed to regenerate description PDF:', pdfError);
+            }
         }
 
         await book.update(updateData);
@@ -493,7 +526,27 @@ export const updateBookCover = async (req: Request, res: Response) => {
         // Use original image (preserve transparency and format)
         const coverImageBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
-        await book.update({ coverImage: coverImageBase64 });
+        // Regenerate PDF with new cover image
+        let descriptionPdf = book.descriptionPdf;
+        try {
+            descriptionPdf = await generateBookDescriptionPdf({
+                title: book.title,
+                author: book.author,
+                isbn: book.isbn,
+                publisher: 'BR Publications',
+                releaseDate: book.releaseDate,
+                edition: '1st Edition',
+                description: book.description,
+                coverImage: coverImageBase64,
+            });
+        } catch (pdfError) {
+            console.error('[updateBookCover] Failed to regenerate description PDF:', pdfError);
+        }
+
+        await book.update({ 
+            coverImage: coverImageBase64,
+            descriptionPdf
+        });
 
         return sendSuccess(res, { coverImage: coverImageBase64 }, 'Cover image updated successfully');
     } catch (error) {
