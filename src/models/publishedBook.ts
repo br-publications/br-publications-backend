@@ -24,6 +24,9 @@ export interface PublishedBookAttributes {
     releaseDate: string | null; // "DD/MM/YYYY" or ISO
     copyright: string | null;
     doi: string | null;
+    keywords: string[] | null;
+    uid: string | null;
+    descriptionPdf: Buffer | null;
     // Chapter specific fields (can be null for textbooks)
     synopsis: Record<string, string> | null;
     scope: Record<string, string> | null;
@@ -61,6 +64,9 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
     public releaseDate!: string | null;
     public copyright!: string | null;
     public doi!: string | null;
+    public keywords!: string[] | null;
+    public uid!: string | null;
+    public descriptionPdf!: Buffer | null;
     public synopsis!: Record<string, string> | null;
     public scope!: Record<string, string> | null;
     public tableContents!: Record<string, string> | null;
@@ -164,6 +170,20 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                 doi: {
                     type: DataTypes.STRING(200),
                     allowNull: true,
+                },
+                keywords: {
+                    type: DataTypes.JSON,
+                    allowNull: true,
+                    defaultValue: null,
+                },
+                uid: {
+                    type: DataTypes.STRING(100),
+                    allowNull: true,
+                },
+                descriptionPdf: {
+                    type: DataTypes.BLOB('long'),
+                    allowNull: true,
+                    field: 'description_pdf',
                 },
                 synopsis: {
                     type: DataTypes.JSON,
