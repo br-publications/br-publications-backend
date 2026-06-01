@@ -29,10 +29,33 @@ const TEMP_UPLOAD_DIR = path.resolve('uploads/temp');
 
 const parseJsonField = (field: any) => {
     if (field == null) return null;
-    if (typeof field === 'string') {
-        try { return JSON.parse(field); } catch { return null; }
+    let current = field;
+
+    // Self-healing: if it's an object with numeric keys (exploded JSON string characters), reconstruct it
+    if (typeof current === 'object' && !Array.isArray(current)) {
+        const keys = Object.keys(current);
+        if (keys.length > 0 && keys.every(k => !isNaN(Number(k)))) {
+            try {
+                const sortedKeys = keys.map(Number).sort((a, b) => a - b);
+                const str = sortedKeys.map(k => current[String(k)]).join('');
+                current = str;
+            } catch (err) {
+                console.error("parseJsonField: Failed to reconstruct exploded object:", err);
+            }
+        }
     }
-    return field;
+
+    // Parse recursively in case of double stringification
+    let parseCount = 0;
+    while (typeof current === 'string' && parseCount < 5) {
+        try {
+            current = JSON.parse(current);
+            parseCount++;
+        } catch {
+            break;
+        }
+    }
+    return current;
 };
 
 /**
