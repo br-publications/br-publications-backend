@@ -147,8 +147,8 @@ app.use(cors({
  * Reducing this from 100MB to 10MB prevents JSON-based DoS attacks while
  * keeping all PDF/file upload workflows fully intact.
  */
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Static file serving for uploads
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
