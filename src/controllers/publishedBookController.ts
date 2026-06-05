@@ -3,6 +3,8 @@ import { Op } from 'sequelize';
 import PublishedBook from '../models/publishedBook';
 import { generateBookDescriptionPdf } from '../utils/pdfGenerator';
 import TextBookFile from '../models/textBookFile';
+import PublishedBookPdf from '../models/publishedBookPdf';
+import crypto from 'crypto';
 import { sendSuccess, sendError } from '../utils/responseHandler';
 import sharp from 'sharp';
 
@@ -437,7 +439,7 @@ export const updateBookDetails = async (req: Request, res: Response) => {
             title, author, description, category, isbn, doi, pages,
             publishedDate, pricing, coAuthors, indexedIn, releaseDate,
             copyright, googleLink, flipkartLink, amazonLink,
-            keywords, uid, descriptionPdf
+            keywords, uid
         } = req.body;
 
         const updateData: any = {
@@ -457,8 +459,7 @@ export const updateBookDetails = async (req: Request, res: Response) => {
             flipkartLink,
             amazonLink,
             keywords,
-            uid,
-            descriptionPdf
+            uid
         };
 
         // If publishedDate is not explicitly provided, derive it from releaseDate (Year)
@@ -493,7 +494,21 @@ export const updateBookDetails = async (req: Request, res: Response) => {
                     description: description !== undefined ? description : book.description,
                     coverImage: book.coverImage,
                 });
-                updateData.descriptionPdf = pdfBuffer;
+                
+                if (!book.pdfUniqueId && !updateData.pdfUniqueId) {
+                    // Generate a random 4 character string
+                    updateData.pdfUniqueId = crypto.randomBytes(2).toString('hex').toUpperCase();
+                }
+
+                // Upsert the PDF data
+                const [pdfRecord, created] = await PublishedBookPdf.findOrCreate({
+                    where: { bookId: book.id },
+                    defaults: { bookId: book.id, pdfData: pdfBuffer }
+                });
+
+                if (!created) {
+                    await pdfRecord.update({ pdfData: pdfBuffer });
+                }
             } catch (pdfError) {
                 console.error('[updateBookDetails] Failed to regenerate description PDF:', pdfError);
             }
@@ -527,9 +542,9 @@ export const updateBookCover = async (req: Request, res: Response) => {
         const coverImageBase64 = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
         // Regenerate PDF with new cover image
-        let descriptionPdf = book.descriptionPdf;
+        let pdfBuffer: Buffer | null = null;
         try {
-            descriptionPdf = await generateBookDescriptionPdf({
+            pdfBuffer = await generateBookDescriptionPdf({
                 title: book.title,
                 author: book.author,
                 isbn: book.isbn,
@@ -539,14 +554,30 @@ export const updateBookCover = async (req: Request, res: Response) => {
                 description: book.description,
                 coverImage: coverImageBase64,
             });
+            
+            let pdfUniqueId = book.pdfUniqueId;
+            if (!pdfUniqueId) {
+                pdfUniqueId = crypto.randomBytes(2).toString('hex').toUpperCase();
+                await book.update({ pdfUniqueId, coverImage: coverImageBase64 });
+            } else {
+                await book.update({ coverImage: coverImageBase64 });
+            }
+
+            if (pdfBuffer) {
+                const [pdfRecord, created] = await PublishedBookPdf.findOrCreate({
+                    where: { bookId: book.id },
+                    defaults: { bookId: book.id, pdfData: pdfBuffer }
+                });
+
+                if (!created) {
+                    await pdfRecord.update({ pdfData: pdfBuffer });
+                }
+            }
+
         } catch (pdfError) {
             console.error('[updateBookCover] Failed to regenerate description PDF:', pdfError);
+            await book.update({ coverImage: coverImageBase64 });
         }
-
-        await book.update({ 
-            coverImage: coverImageBase64,
-            descriptionPdf
-        });
 
         return sendSuccess(res, { coverImage: coverImageBase64 }, 'Cover image updated successfully');
     } catch (error) {
@@ -627,6 +658,40 @@ export const deleteBook = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * @route GET /api/books/:id/pdf/:uniqueId
+ * @desc Get description PDF for a book
+ * @access Public
+ */
+export const getBookPdf = async (req: Request, res: Response) => {
+    try {
+        const id = parseInt(req.params.id);
+        const { uniqueId } = req.params;
+
+        if (isNaN(id)) return sendError(res, 'Invalid book ID', 400);
+
+        const book = await PublishedBook.findByPk(id);
+        if (!book) return sendError(res, 'Book not found', 404);
+
+        if (book.pdfUniqueId !== uniqueId) {
+            return sendError(res, 'Invalid PDF unique ID or not found', 404);
+        }
+
+        const pdfRecord = await PublishedBookPdf.findOne({ where: { bookId: id } });
+
+        if (!pdfRecord || !pdfRecord.pdfData) {
+            return sendError(res, 'PDF not found', 404);
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="book_${id}_description.pdf"`);
+        return res.send(pdfRecord.pdfData);
+    } catch (error) {
+        console.error('Error fetching book PDF:', error);
+        return sendError(res, 'Failed to fetch book PDF', 500);
+    }
+};
+
 export default {
     getAllBooks,
     getBookById,
@@ -639,5 +704,6 @@ export default {
     updateBookCover,
     updateVisibility,
     updateFeatured,
-    deleteBook
+    deleteBook,
+    getBookPdf
 };

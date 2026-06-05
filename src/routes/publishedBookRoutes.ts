@@ -139,6 +139,36 @@ router.get('/:id/cover', controller.getBookCover);
  */
 router.get('/:id/cover/thumbnail', controller.getBookCoverThumbnail);
 
+/**
+ * @swagger
+ * /api/books/{id}/pdf/{uniqueId}:
+ *   get:
+ *     summary: Get book description PDF
+ *     tags: [Published Books]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Book ID
+ *       - in: path
+ *         name: uniqueId
+ *         required: true
+ *         schema: { type: string }
+ *         description: Unique PDF identifier
+ *     responses:
+ *       200:
+ *         description: PDF file
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: PDF not found
+ */
+router.get('/:id/pdf/:uniqueId', controller.getBookPdf);
+
 // Update book details (Admin only)
 router.put(
     '/:id',
