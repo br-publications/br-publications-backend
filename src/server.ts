@@ -219,6 +219,7 @@ const startServer = async () => {
     const TokenBlacklist = (await import('./models/tokenBlacklist')).default;
     const BookChapterSubmission = (await import('./models/bookChapterSubmission')).default;
     const PublishedBook = (await import('./models/publishedBook')).default;
+    const PublishedBookPdf = (await import('./models/publishedBookPdf')).default;
     const BookChapterFile = (await import('./models/bookChapterFile')).default;
     const BookChapterReviewerAssignment = (await import('./models/bookChapterReviewerAssignment')).default;
     const BookChapterStatusHistory = (await import('./models/bookChapterStatusHistory')).default;
@@ -276,6 +277,7 @@ const startServer = async () => {
       TokenBlacklist,
       BookChapterSubmission,
       PublishedBook,
+      PublishedBookPdf,
       BookChapterFile,
       BookChapterReviewerAssignment,
       BookChapterStatusHistory,

@@ -2,6 +2,8 @@ import { Response } from 'express';
 import { Op, Sequelize } from 'sequelize';
 import TextBookSubmission, { TextBookStatus } from '../models/textBookSubmission';
 import PublishedBook, { BookType } from '../models/publishedBook';
+import PublishedBookPdf from '../models/publishedBookPdf';
+import crypto from 'crypto';
 import { generateBookDescriptionPdf } from '../utils/pdfGenerator';
 import TextBookFile, { TextBookFileType } from '../models/textBookFile';
 import TextBookRevision from '../models/textBookRevision';
@@ -1601,7 +1603,6 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
             isFeatured: false,
             keywords: publicationDetails.keywords || null,
             uid: publicationDetails.uid || null,
-            descriptionPdf: null,
         }, { transaction });
 
         // If UID is missing, fall back to the generated ID
@@ -1621,8 +1622,15 @@ export const publishTextBook = async (req: AuthRequest, res: Response) => {
                 description: publishedBook.description,
                 coverImage: publishedBook.coverImage,
             });
-            publishedBook.descriptionPdf = pdfBuffer;
+            
+            const pdfUniqueId = crypto.randomBytes(2).toString('hex').toUpperCase();
+            publishedBook.pdfUniqueId = pdfUniqueId;
             await publishedBook.save({ transaction });
+
+            await PublishedBookPdf.create({
+                bookId: publishedBook.id,
+                pdfData: pdfBuffer
+            }, { transaction });
         } catch (pdfError) {
             console.error('[publishTextBook] Failed to generate dynamic description PDF:', pdfError);
         }

@@ -26,7 +26,7 @@ export interface PublishedBookAttributes {
     doi: string | null;
     keywords: string[] | null;
     uid: string | null;
-    descriptionPdf: Buffer | null;
+    pdfUniqueId: string | null;
     // Chapter specific fields (can be null for textbooks)
     synopsis: Record<string, string> | null;
     scope: Record<string, string> | null;
@@ -66,7 +66,7 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
     public doi!: string | null;
     public keywords!: string[] | null;
     public uid!: string | null;
-    public descriptionPdf!: Buffer | null;
+    public pdfUniqueId!: string | null;
     public synopsis!: Record<string, string> | null;
     public scope!: Record<string, string> | null;
     public tableContents!: Record<string, string> | null;
@@ -180,10 +180,10 @@ class PublishedBook extends Model<PublishedBookAttributes, PublishedBookCreation
                     type: DataTypes.STRING(100),
                     allowNull: true,
                 },
-                descriptionPdf: {
-                    type: DataTypes.BLOB('long'),
+                pdfUniqueId: {
+                    type: DataTypes.STRING(4),
                     allowNull: true,
-                    field: 'description_pdf',
+                    field: 'pdf_unique_id',
                 },
                 synopsis: {
                     type: DataTypes.JSON,
