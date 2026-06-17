@@ -1,8 +1,12 @@
 import { Router } from 'express';
 import { getOverview, getMonthlyReport, getExtendedStats, getEngagementStats, sendMonthlyEmailNow } from '../controllers/statsController';
 import * as authMiddleware from '../middleware/auth';
+import { preventCache } from '../middleware/noCache';
 
 const router = Router();
+
+// Disable caching for dynamic analytics endpoints
+router.use(preventCache);
 
 // All stats routes require admin auth
 router.use(authMiddleware.authenticate);

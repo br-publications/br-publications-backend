@@ -20,6 +20,7 @@ import {
   updateProfilePicture,
 } from '../controllers/userController';
 import { authenticate, requireVerified, AuthRequest } from '../middleware/auth';
+import { preventCache } from '../middleware/noCache';
 import {
   requireAdmin,
   hasPermission,
@@ -710,6 +711,7 @@ router.get(
   authenticate,
   requireVerified,
   hasPermission('submission:assign-reviewer'),
+  preventCache,
   getReviewerStats
 );
 

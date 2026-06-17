@@ -23,6 +23,7 @@ import { authenticate, requireVerified } from '../middleware/auth';
 import { requireAdmin, hasRole } from '../middleware/roleBasedAccessControl.middleware';
 import { UserRole } from '../models/user';
 import multer from 'multer';
+import { preventCache } from '../middleware/noCache';
 
 const router = express.Router();
 
@@ -76,6 +77,7 @@ router.get(
     '/stats',
     authenticate,
     requireVerified,
+    preventCache,
     getSubmissionStats
 );
 
