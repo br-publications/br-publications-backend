@@ -75,6 +75,7 @@ class Role extends Model<RoleAttributes, RoleCreationAttributes> implements Role
                 sequelize,
                 tableName: 'roles',
                 timestamps: true,
+                underscored: true,
             }
         );
         return Role;
@@ -158,6 +159,7 @@ class Permission extends Model<PermissionAttributes, PermissionCreationAttribute
                 sequelize,
                 tableName: 'permissions',
                 timestamps: true,
+                underscored: true,
             }
         );
         return Permission;

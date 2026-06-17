@@ -356,6 +356,14 @@ const startServer = async () => {
     // Seed permanent Default Admin
     await seedSuperAdmin();
 
+    // Seed permanent system roles and permissions (RBAC)
+    try {
+      const { seedRBAC } = await import('./utils/rbacSeeder');
+      await seedRBAC();
+    } catch (rbacErr) {
+      console.error('❌ RBAC seeding failed on startup:', rbacErr);
+    }
+
     // Optional auto sync communication templates on startup
     if ((process.env.SYNC_TEMPLATES || '').toLowerCase() === 'true') {
       try {
