@@ -110,12 +110,15 @@ export const getAllBooks = async (req: Request, res: Response) => {
  */
 export const getBookById = async (req: Request, res: Response) => {
     try {
-        const id = parseInt(req.params.id);
-        if (isNaN(id)) {
-            return sendError(res, 'Invalid book ID', 400);
+        const idOrUid = req.params.idOrUid;
+        
+        let book;
+        if (/^\d+$/.test(idOrUid)) {
+            const id = parseInt(idOrUid, 10);
+            book = await PublishedBook.findByPk(id);
+        } else {
+            book = await PublishedBook.findOne({ where: { uid: idOrUid } });
         }
-
-        const book = await PublishedBook.findByPk(id);
 
         if (!book) {
             return sendError(res, 'Book not found', 404);

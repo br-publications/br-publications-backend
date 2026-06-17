@@ -63,23 +63,23 @@ router.get('/categories', controller.getCategories);
 
 /**
  * @swagger
- * /api/books/{id}:
+ * /api/books/{idOrUid}:
  *   get:
- *     summary: Get book details by ID
+ *     summary: Get book details by ID or UID
  *     tags: [Published Books]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: idOrUid
  *         required: true
- *         schema: { type: integer }
- *         description: Book ID
+ *         schema: { type: string }
+ *         description: Book ID (numeric) or UID (alphanumeric)
  *     responses:
  *       200:
  *         description: Book details retrieved
  *       404:
  *         description: Book not found
  */
-router.get('/:id', controller.getBookById);
+router.get('/:idOrUid', controller.getBookById);
 
 /**
  * @swagger

@@ -4,6 +4,7 @@ import multer from 'multer';
 import { authenticate } from '../middleware/auth';
 import { hasRole } from '../middleware/roleBasedAccessControl.middleware';
 import { UserRole } from '../models/user';
+import { preventCache } from '../middleware/noCache';
 import * as controller from '../controllers/bookChapterSubmission';
 
 const router = express.Router();
@@ -422,7 +423,7 @@ router.post('/:id/publish', authenticate, hasRole(UserRole.ADMIN, UserRole.EDITO
  *       200:
  *         description: Statistics retrieved successfully
  */
-router.get('/stats', authenticate, hasRole(UserRole.ADMIN), controller.getStatistics);
+router.get('/stats', authenticate, hasRole(UserRole.ADMIN), preventCache, controller.getStatistics);
 
 // ========================================
 // EDITOR ROUTES
