@@ -209,6 +209,23 @@ app.get(['/health/db', '/api/health/db'], async (req: Request, res: Response) =>
   }
 });
 
+/**
+ * Temporary route to manually trigger database migrations directly from the browser
+ * This helps bypass Hostinger's console limitations and shows exact errors.
+ */
+app.get('/api/migrate-db', (req: Request, res: Response) => {
+  try {
+    // Try without npx just in case Hostinger has issues with it
+    const output = execSync('node_modules/.bin/sequelize-cli db:migrate', {
+      env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'production' }
+    }).toString();
+    res.send(`<pre>✅ Migration Successful:\n\n${output}</pre>`);
+  } catch (err: any) {
+    const fallbackMessage = "If 'node_modules/.bin/sequelize-cli' failed, try running: npx sequelize-cli db:migrate";
+    res.status(500).send(`<pre>❌ Migration Error:\n\nMessage: ${err.message}\n\nFallback: ${fallbackMessage}\n\nSTDOUT:\n${err.stdout?.toString()}\n\nSTDERR:\n${err.stderr?.toString()}</pre>`);
+  }
+});
+
 // Database connection and server start
 const startServer = async () => {
   try {
