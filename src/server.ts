@@ -215,14 +215,17 @@ app.get(['/health/db', '/api/health/db'], async (req: Request, res: Response) =>
  */
 app.get('/api/migrate-db', (req: Request, res: Response) => {
   try {
-    // Try without npx just in case Hostinger has issues with it
-    const output = execSync('node_modules/.bin/sequelize-cli db:migrate', {
+    // Execute the javascript file directly using the current node path.
+    // This perfectly bypasses "Permission Denied" errors on Linux .bin wrappers
+    const nodePath = process.execPath;
+    const scriptPath = path.resolve(process.cwd(), 'node_modules/sequelize-cli/lib/sequelize');
+    
+    const output = execSync(`"${nodePath}" "${scriptPath}" db:migrate`, {
       env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'production' }
     }).toString();
     res.send(`<pre>✅ Migration Successful:\n\n${output}</pre>`);
   } catch (err: any) {
-    const fallbackMessage = "If 'node_modules/.bin/sequelize-cli' failed, try running: npx sequelize-cli db:migrate";
-    res.status(500).send(`<pre>❌ Migration Error:\n\nMessage: ${err.message}\n\nFallback: ${fallbackMessage}\n\nSTDOUT:\n${err.stdout?.toString()}\n\nSTDERR:\n${err.stderr?.toString()}</pre>`);
+    res.status(500).send(`<pre>❌ Migration Error:\n\nMessage: ${err.message}\n\nSTDOUT:\n${err.stdout?.toString()}\n\nSTDERR:\n${err.stderr?.toString()}</pre>`);
   }
 });
 
@@ -233,7 +236,9 @@ const startServer = async () => {
     if (process.env.NODE_ENV === 'production') {
       console.log('🚀 Running database migrations for production...');
       try {
-        execSync('npx sequelize-cli db:migrate --env production', { stdio: 'inherit' });
+        const nodePath = process.execPath;
+        const scriptPath = path.resolve(process.cwd(), 'node_modules/sequelize-cli/lib/sequelize');
+        execSync(`"${nodePath}" "${scriptPath}" db:migrate --env production`);
         console.log('✅ Database migrations completed.');
       } catch (migrationError) {
         console.error('❌ Database migration failed:', migrationError);
