@@ -4,6 +4,7 @@ console.log('🚀 Server starting...');
 
 import express, { Application, Request, Response } from 'express';
 import path from 'path';
+import { execSync } from 'child_process';
 import cors from 'cors';
 import helmet from 'helmet';
 import { Sequelize } from 'sequelize';
@@ -211,6 +212,17 @@ app.get(['/health/db', '/api/health/db'], async (req: Request, res: Response) =>
 // Database connection and server start
 const startServer = async () => {
   try {
+    // Automatically run migrations in production
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🚀 Running database migrations for production...');
+      try {
+        execSync('npx sequelize-cli db:migrate --env production', { stdio: 'inherit' });
+        console.log('✅ Database migrations completed.');
+      } catch (migrationError) {
+        console.error('❌ Database migration failed:', migrationError);
+      }
+    }
+
     await sequelize.authenticate();
 
 
