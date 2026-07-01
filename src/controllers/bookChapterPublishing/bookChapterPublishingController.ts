@@ -1940,6 +1940,7 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
     }
 
     const transaction = await sequelize.transaction();
+    let isCommitted = false;
 
     try {
         const id = parseInt(req.params.id);
@@ -2057,15 +2058,14 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
             }
         }
 
-        await transaction.commit();
-
         // --- RELATIONAL SYNC (Normalized Data) ---
         // 1. Authors
         if (chapter.authorBiographies) {
-            const authorBios = chapter.authorBiographies as any[];
+            const authorBios = (parseJsonField(chapter.authorBiographies) as any[]) || [];
             for (const bio of authorBios) {
                 let pAuthor = await PublishedAuthor.findOne({
-                    where: { name: bio.authorName, email: bio.email || null }
+                    where: { name: bio.authorName, email: bio.email || null },
+                    transaction
                 });
                 if (!pAuthor) {
                     await PublishedAuthor.create({
@@ -2074,26 +2074,27 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
                         affiliation: bio.affiliation || '',
                         biography: bio.biography || '',
                         userId: null,
-                    });
+                    }, { transaction });
                 } else {
                     await pAuthor.update({
                         affiliation: bio.affiliation || pAuthor.affiliation,
                         biography: bio.biography || pAuthor.biography,
-                    });
+                    }, { transaction });
                 }
             }
         }
 
         // 2. Editors
         if (chapter.editorBiographies) {
-            const editorBios = chapter.editorBiographies as any[];
+            const editorBios = (parseJsonField(chapter.editorBiographies) as any[]) || [];
             const editorRecords: any[] = [];
             for (const bio of editorBios) {
                 const editorName = bio.editorName || bio.authorName;
                 if (!editorName) continue;
 
                 let pEditor = await PublishedEditor.findOne({
-                    where: { name: editorName, email: bio.email || null }
+                    where: { name: editorName, email: bio.email || null },
+                    transaction
                 });
                 if (!pEditor) {
                     pEditor = await PublishedEditor.create({
@@ -2101,22 +2102,27 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
                         email: bio.email || null,
                         affiliation: bio.affiliation || '',
                         biography: bio.biography || '',
-                    });
+                    }, { transaction });
                 } else {
                     await pEditor.update({
                         affiliation: bio.affiliation || pEditor.affiliation,
                         biography: bio.biography || pEditor.biography,
-                    });
+                    }, { transaction });
                 }
                 if (pEditor) editorRecords.push(pEditor);
             }
 
             // Sync relational link between editor and book record (join table)
-            // Note: In manual update, we don't have a shared transaction easily here,
-            // but chapter.setBiographyEditors handles the relational sync.
             if (editorRecords.length > 0) {
-                await (chapter as any).setBiographyEditors(editorRecords);
+                await (chapter as any).setBiographyEditors(editorRecords, { transaction });
             }
+        }
+
+        try {
+            await transaction.commit();
+            isCommitted = true;
+        } catch(commitErr) {
+            throw commitErr;
         }
 
         // Clear disk cache to ensure fresh updated files are fetched
@@ -2138,10 +2144,18 @@ export const updatePublishedChapter = async (req: AuthRequest, res: Response) =>
 
         return sendSuccess(res, chapter, 'Published book chapter updated successfully');
 
-    } catch (error) {
-        if (transaction) await transaction.rollback();
+    } catch (error: any) {
+        try {
+            if (transaction && !(transaction as any).finished && typeof isCommitted === 'undefined') {
+                await transaction.rollback();
+            } else if (transaction && typeof isCommitted !== 'undefined' && !isCommitted) {
+                await transaction.rollback();
+            }
+        } catch (rollbackErr) {
+            console.error('❌ Failed to rollback transaction:', rollbackErr);
+        }
         console.error('❌ updatePublishedChapter error:', error);
-        return sendError(res, 'Failed to update published book chapter', 500);
+        return sendError(res, 'Failed to update published book chapter: ' + (error.message || ''), 500);
     }
 };
 
