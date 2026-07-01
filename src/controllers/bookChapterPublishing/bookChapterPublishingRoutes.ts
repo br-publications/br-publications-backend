@@ -281,6 +281,15 @@ router.put(
     controller.updatePublishedChapter,
 );
 
+/** PATCH /api/book-chapter-publishing/:id - Partially update details of a published chapter */
+router.patch(
+    '/:id',
+    authenticate,
+    requireVerified,
+    hasRoleLevel(UserRole.EDITOR),
+    controller.updatePublishedChapter,
+);
+
 /** PUT /api/book-chapter-publishing/:id/cover - Replace cover image (multipart or base64 JSON) */
 router.put(
     '/:id/cover',
