@@ -484,9 +484,9 @@ const startServer = async () => {
     const localFileRoutes = (await import('./routes/admin/localFileRoutes')).default;
     app.use('/api/admin/local-files', localFileRoutes);
 
-    // SEO Routes (sitemap.xml and robots.txt — must be at root, NOT under /api/)
-    const sitemapRoutes = (await import('./routes/sitemapRoutes')).default;
-    app.use('/', sitemapRoutes);
+    // SEO Routes (sitemap.xml and robots.txt — disabled as per request)
+    // const sitemapRoutes = (await import('./routes/sitemapRoutes')).default;
+    // app.use('/', sitemapRoutes);
 
     // 404 Handler - Must be AFTER all routes
     app.use((req: Request, res: Response) => {
