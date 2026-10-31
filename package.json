@@ -39,7 +39,7 @@
     "google-auth-library": "^9.14.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
-    "multer": "^2.0.2",
+    "multer": "^2.5.0",
     "mysql2": "^3.22.3",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
