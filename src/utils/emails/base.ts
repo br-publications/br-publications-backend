@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import type { Mail } from 'nodemailer';
 import sgMail from '@sendgrid/mail';
 import { Resend } from 'resend';
 
@@ -16,12 +17,12 @@ export enum EmailCategory {
 /**
  * Cache for transporters to avoid re-creating them for every email
  */
-const transporters = new Map<string, nodemailer.Transporter>();
+const transporters = new Map<string, Mail>();
 
 /**
  * Get a transporter for a specific category, or the default one
  */
-const getTransporter = (category: EmailCategory): { transporter: nodemailer.Transporter, from: string } => {
+const getTransporter = (category: EmailCategory): { transporter: Mail, from: string } => {
     // Default connection & credentials
     const defaultHost = process.env.EMAIL_HOST || '';
     const defaultPort = Number(process.env.EMAIL_PORT) || 587;
